@@ -1,6 +1,7 @@
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
+import plyfile
 
 # -----------
 # VARIABLES
@@ -24,22 +25,125 @@ zRotate = 0.
 xTrans = 0.
 yTrans = 0.
 
+colors = (
+    (1,0,0),
+    (0,1,0),
+    (0,0,1),
+    (0,1,0),
+    (1,1,1),
+    (0,1,1),
+    (1,0,0),
+    (0,1,0),
+    (0,0,1),
+    (1,0,0),
+    (1,1,1),
+    (0,1,1),
+    )
+
 
 # -------------------
 # SCENE CONSTRUCTOR
 # -------------------
 
+
+def read_off(file):
+    if 'OFF' != file.readline().strip():
+        raise('Not a valid OFF header')
+    n_verts, n_faces, n_edges = tuple([int(s) for s in file.readline().strip().split(' ')])
+    verts = [[float(s) for s in file.readline().strip().split(' ')] for i_vert in range(n_verts)]
+    faces = []
+    for i_face in range(n_faces):
+        s = file.readline().strip().split(' ')
+        if i_face == 0:
+            shape = s[0]
+        faces.append([int(s[x]) for x in range(1, 4)])
+    return shape, verts, faces
+
+def mesh_reconstructor(file):
+    shape, verticies, faces = read_off(file)
+
+    glBegin(GL_TRIANGLES)
+    for face in faces:
+        x = 0
+        for vertex in face:
+            x += 1
+            glColor3fv(colors[x])
+            glVertex3fv(verticies[vertex])
+    glEnd()
+
+
+
+def cube():
+    verticies = (
+        (1, -1, -1),
+        (1, 1, -1),
+        (-1, 1, -1),
+        (-1, -1, -1),
+        (1, -1, 1),
+        (1, 1, 1),
+        (-1, -1, 1),
+        (-1, 1, 1)
+    )
+
+    edges = (
+        (0, 1),
+        (0, 3),
+        (0, 4),
+        (2, 1),
+        (2, 3),
+        (2, 7),
+        (6, 3),
+        (6, 4),
+        (6, 7),
+        (5, 1),
+        (5, 4),
+        (5, 7)
+    )
+
+    surfaces = (
+        (0, 1, 2, 3),
+        (3, 2, 7, 6),
+        (6, 7, 5, 4),
+        (4, 5, 1, 0),
+        (1, 5, 7, 2),
+        (4, 0, 3, 6)
+    )
+
+    glBegin(GL_TRIANGLES)
+    for surface in surfaces:
+        x = 0
+        for vertex in surface:
+            x += 1
+            glColor3fv(colors[x])
+            glVertex3fv(verticies[vertex])
+    glEnd()
+
+
 def scenemodel():
     glRotate(90, 0., 0., 1.)
-    glutSolidTeapot(2.)
+    with open("m0.off", "r") as f:
+        mesh_reconstructor(f)
+    #cube()
+    #glutSolidTeapot(2.)
 
+
+# ---------
+# PlyLoader
+# ---------
+
+def plyLoader(file):
+    with open(file) as f:
+        plydata = plyfile.PlyData.read(f)
+
+    return plydata
 
 # --------
 # VIEWER
 # --------
 
 def printHelp():
-    print ("""\n\n    
+    print(
+    """\n\n    
          -------------------------------------------------------------------\n
          Left Mousebutton       - move eye position (+ Shift for third axis)\n
          Middle Mousebutton     - translate the scene\n
@@ -47,8 +151,8 @@ def printHelp():
           Key                - reset viewpoint\n
           Key                - exit the program\n
          -------------------------------------------------------------------\n
-         \n""")
-
+         \n"""
+    )
 
 def init():
     glEnable(GL_NORMALIZE)
@@ -152,11 +256,14 @@ def motion(x, y):
     yStart = y
     glutPostRedisplay()
 
+def main2():
+    with open("m0.off", "r") as f:
+        read_off(f)
 
 # ------
 # MAIN
 # ------
-if __name__ == "__main__":
+def main ():
     # GLUT Window Initialization
     glutInit()
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)  # zBuffer
@@ -164,7 +271,7 @@ if __name__ == "__main__":
     glutInitWindowPosition(0 + 4, int(g_Height / 4))
     glutCreateWindow("Visualizzatore_2.0")
     # Initialize OpenGL graphics state
-    init()
+    #init()
     # Register callbacks
     glutReshapeFunc(reshape)
     glutDisplayFunc(display)
@@ -174,3 +281,6 @@ if __name__ == "__main__":
     printHelp()
     # Turn the flow of control over to GLUT
     glutMainLoop()
+
+if __name__ == "__main__":
+    main()
