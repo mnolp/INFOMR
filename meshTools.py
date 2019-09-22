@@ -56,9 +56,12 @@ def read_off(file):
 def meshFromArray(file):
     shape, vertexes, faces = read_off(file)
     glEnableClientState(GL_VERTEX_ARRAY)
+    #glEnableClientState(GL_NORMAL_ARRAY)
     glVertexPointer(3, GL_FLOAT, 0, vertexes)
+    #glNormalPointer(GL_FLOAT, len(faces), triangularMeshNormals(vertexes, faces))
     glDrawElements(GL_TRIANGLES, len(faces), GL_UNSIGNED_INT, faces)
     glDisableClientState(GL_VERTEX_ARRAY)
+    glDisableClientState(GL_NORMAL_ARRAY)
 
 
 def mesh_reconstructor(file):
@@ -77,35 +80,43 @@ def mesh_reconstructor(file):
 
     glBegin(GL_TRIANGLES)
     for face in faces:
-        x = 0
         for vertex in face:
-            x += 1
             glNormal3fv(triangleNormal(verticies, face))
-            glVertex3fv(verticies[vertex])
+            v = verticies[vertex]
+            glVertex3fv(v)
     glEnd()
 
-def triangleNormal(vertexes, triangle):
-    ux = vertexes[triangle[1]][0] - vertexes[triangle[0]][0]
-    uy = vertexes[triangle[1]][1] - vertexes[triangle[0]][1]
-    uz = vertexes[triangle[1]][2] - vertexes[triangle[0]][2]
-    vx = vertexes[triangle[2]][0] - vertexes[triangle[0]][0]
-    vy = vertexes[triangle[2]][1] - vertexes[triangle[0]][1]
-    vz = vertexes[triangle[2]][2] - vertexes[triangle[0]][2]
+
+def triangularMeshNormals(vertexes, faces):
+    normals = []
+    for i in range(len(faces)):
+        if i%3 == 0:
+            faceNormal = triangleNormal(vertexes, (faces[i], faces[i+1], faces[i+2]))
+            normals.append([faceNormal]*3)
+    return normals
+
+def triangleNormal(vertexes, face):
+    ux = vertexes[face[1]][0] - vertexes[face[0]][0]
+    uy = vertexes[face[1]][1] - vertexes[face[0]][1]
+    uz = vertexes[face[1]][2] - vertexes[face[0]][2]
+    vx = vertexes[face[2]][0] - vertexes[face[0]][0]
+    vy = vertexes[face[2]][1] - vertexes[face[0]][1]
+    vz = vertexes[face[2]][2] - vertexes[face[0]][2]
 
     x = (uy*vz)-(uz-vy)
     y = (uz*vx)-(ux-vz)
     z = (ux*vy)-(uy-vx)
 
-    xf = x / (abs(x) + abs(y) + abs(z))
-    yf = y / (abs(x) + abs(y) + abs(z))
-    zf = z / (abs(x) + abs(y) + abs(z))
+    xf = x / math.sqrt(pow(x,2) + pow(y, 2) + pow(z, 2))
+    yf = y / math.sqrt(pow(x,2) + pow(y, 2) + pow(z, 2))
+    zf = z / math.sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2))
 
     return (xf, yf, zf)
 
 
 def scenemodel():
     glRotate(90, 0., 0., 1.)
-    with open("dataset/Teddy/164.off", "r") as f:
+    with open("dataset/Airplane/61.off", "r") as f:
         # mesh_reconstructor(f)
         meshFromArray(f)
 
@@ -151,12 +162,13 @@ def init():
     glColor3f(0.8, 0.8, 0.8);
 
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_NORMALIZE);
+    # glEnable(GL_NORMALIZE);
+    glDepthFunc(GL_LESS);
     # glLightfv(GL_LIGHT0, GL_POSITION, [.0, 10.0, 10., 0.])
     # glLightfv(GL_LIGHT0, GL_AMBIENT, [.0, .0, .0, 1.0]);
     # glLightfv(GL_LIGHT0, GL_DIFFUSE, [1.0, 1.0, 1.0, 1.0]);
     # glLightfv(GL_LIGHT0, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0]);
-    glShadeModel(GL_SMOOTH);
+    glShadeModel(GL_FLAT);
     resetView()
 
 
@@ -270,3 +282,59 @@ def meshRenderer ():
     printHelp()
     # Turn the flow of control over to GLUT
     glutMainLoop()
+
+
+def getPositionDimensions(vertexes):
+    maxx, maxy, maxz = 0, 0, 0
+    minx, miny, minz = sys.maxsize
+    sumx, sumy, sumz = 0, 0, 0
+
+    for vertex in vertexes:
+        if vertex[0] < minx: minx = vertex[0]
+        if vertex[0] < miny: miny = vertex[1]
+        if vertex[0] < minz: minz = vertex[2]
+        if vertex[0] > maxx: maxx = vertex[0]
+        if vertex[0] > maxy: maxy = vertex[1]
+        if vertex[0] > maxz: maxz = vertex[2]
+
+        sumx += vertex[0]
+        sumy += vertex[1]
+        sumz += vertex[2]
+    sumx /= len(vertexes)
+    sumy /= len(vertexes)
+    sumz /= len(vertexes)
+
+    return ([minx, miny, minz], [maxx, maxy, maxz], [sumx, sumy, sumz])
+
+def moveMeshToCenter(vertexes, delta):
+    for i in range(len(vertexes)):
+        for j in range(3):
+            vertexes[i][j] -= delta[j]
+    return vertexes
+
+import math
+def meshReducer(filepath):
+    with open(filepath, "r") as f:
+        shape, vertexes, faces = read_off(f)
+
+
+    dist = 0
+    count = 0
+    checked = []
+    for face in faces:
+        for i in range(len(face)):
+            j = i+1
+            if i == 2: j = 0
+
+            v1 = vertexes[face[i]]
+            v2 = vertexes[face[j]]
+            if (v1, v2) in checked or (v2, v1) in checked:
+                pass
+            else:
+                count += 1
+                dist += math.sqrt(pow(v1[0]-v2[0], 2) + pow(v1[1]-v2[1], 2) + pow(v1[2]-v2[2], 2))
+                checked.append((v1, v2))
+
+    print(dist)
+    print(count)
+    print(dist/count)
