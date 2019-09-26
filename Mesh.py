@@ -73,34 +73,49 @@ class Mesh:
 
     def meshCrasher(self):
         edgesLength = []
-        print(len(self.vertexes))
+        checkedVertexes = []
+        print("Vertexes before: "+str(len(self.vertexes)))
+        print("Faces before: " + str(len(self.faces)))
         for face in self.faces:
             for i in range(3):
                 j = 0 if i == 2 else i+1
-                edgesLength.append((
-                    pow(self.vertexes[face[i]][0] - self.vertexes[face[j]][0], 2) + pow(self.vertexes[face[i]][1] - self.vertexes[face[j]][1], 2) + pow(self.vertexes[face[i]][2] - self.vertexes[face[j]][2], 2),
-                    face[i],
-                    face[j]
-                ))
+                if not (face[i] in checkedVertexes and face[j] in checkedVertexes):
+                    checkedVertexes.append([face[i], face[j]])
+                    edgesLength.append((
+                        pow(self.vertexes[face[i]][0] - self.vertexes[face[j]][0], 2) + pow(self.vertexes[face[i]][1] - self.vertexes[face[j]][1], 2) + pow(self.vertexes[face[i]][2] - self.vertexes[face[j]][2], 2),
+                        face[i],
+                        face[j]
+                    ))
 
         edgesLength.sort()
-        for i in range(100):
-            v1, v2 = self.vertexes[edgesLength[i][1]], self.vertexes[edgesLength[i][2]]
-            midpoint = [(v1[0]+v2[0])/2, (v1[1]+v2[1])/2, (v1[2]+v2[2])/2]
-            for j in range(len(self.faces)):
-                for k in range(3):
-                    if self.faces[j][k] == edgesLength[i][2]: self.faces[j][k] = edgesLength[i][1]
-            self.vertexes[edgesLength[i][1]] = midpoint
-            self.vertexes[edgesLength[i][2]] = -1
+        count = 0
+        while count<500:
+            for i in range(len(edgesLength)):
+                if count >= 500:
+                    break
+                v1 = self.vertexes[edgesLength[i][1]]
+                v2 = self.vertexes[edgesLength[i][2]]
+                if v1 != -1 and v2 != -1:
+                    midpoint = [(v1[0]+v2[0])/2, (v1[1]+v2[1])/2, (v1[2]+v2[2])/2]
+                    for j in range(len(self.faces)):
+                        for k in range(3):
+                            if self.faces[j][k] == edgesLength[i][2]: self.faces[j][k] = edgesLength[i][1]
+                    self.vertexes[edgesLength[i][1]] = midpoint
+                    self.vertexes[edgesLength[i][2]] = -1
+                    count += 1
 
-        i=0
-        while(i<len(self.vertexes)):
-            if self.vertexes == -1:
-                del self.vertexes[i]
-                i-=1
-            i+=1
-
-        print(len(self.vertexes))
+        newVertexes = []
+        for i in range(len(self.vertexes)):
+            if self.vertexes[i] != -1:
+                newVertexes.append(self.vertexes[i])
+        self.vertexes = newVertexes
+        newFaces = []
+        for i in range(len(self.faces)):
+            if not self.faces[i] in newFaces:
+                newFaces.append(self.faces[i])
+        self.faces = newFaces
+        print("Vertexes after: "+str(len(self.vertexes)))
+        print("Faces after: " + str(len(self.faces)))
 
 
 

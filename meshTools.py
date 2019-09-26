@@ -116,7 +116,7 @@ def triangleNormal(vertexes, face):
 
 def scenemodel():
     glRotate(90, 0., 0., 1.)
-    with open("dataset/Airplane/61.off", "r") as f:
+    with open("dataset/Airplane/61_processed.off", "r") as f:
         # mesh_reconstructor(f)
         meshFromArray(f)
 
@@ -153,10 +153,10 @@ def init():
     glLoadIdentity()
 
     glShadeModel(GL_FLAT);
-    light = (1, 1, 1, 0);
+
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
-    glLightfv(GL_LIGHT0, GL_POSITION, light)
+
     glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
     glEnable(GL_COLOR_MATERIAL)
     glColor3f(0.8, 0.8, 0.8);

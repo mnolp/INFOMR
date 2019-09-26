@@ -1,15 +1,16 @@
 import meshTools
-import databaseTools
+#import databaseTools
 import Mesh
 
 
 def main():
     filepath = "dataset/Airplane/61.off"
-    # meshTools.meshRenderer()
-    with open(filepath, "r") as f:
-        shape, vertexes, faces = meshTools.read_off(f)
-    m = Mesh.Mesh(filepath, vertexes, faces)
-    m.meshCrasher()
+    meshTools.meshRenderer()
+    # with open(filepath, "r") as f:
+    #     shape, vertexes, faces = meshTools.read_off(f)
+    # m = Mesh.Mesh(filepath, vertexes, faces)
+    # m.meshCrasher()
+    # m.toFile()
     # m.setMeshToCenter()
     # m.normalizeMesh()
     # m.toFile()
