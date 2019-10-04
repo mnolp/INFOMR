@@ -9,11 +9,11 @@ This should be a struct.
 DO NOT create object of type Mesh, use the two below. 
 '''
 class Mesh:
-    def __init__(self, filename, vertexes, faces):
-        self.vertexes = vertexes
+    def __init__(self, filename, vertices, faces):
+        self.vertices = vertices
         self.faces = faces
         self.filename = filename
-        self.numberOfVertices = len(vertexes)
+        self.numberOfVertices = len(vertices)
         self.numberOfFaces = len(faces)
         self.boundingBoxDimensions = (0, 0, 0)
         self.centerOfMass = (0,0,0)
@@ -27,22 +27,22 @@ class Mesh:
         sumValues = [0, 0, 0]
 
         for i in range(3):
-            for vertex in self.vertexes:
+            for vertex in self.vertices:
                 sumValues[i] += vertex[i]
-            sumValues[i] /= len(self.vertexes)
+            sumValues[i] /= len(self.vertices)
 
         self.centerOfMass = (sumValues[0], sumValues[1], sumValues[2])
 
-        for i in range(len(self.vertexes)):
+        for i in range(len(self.vertices)):
             for j in range(3):
-                self.vertexes[i][j] -= sumValues[j]
+                self.vertices[i][j] -= sumValues[j]
         self.setBoundingBox()
 
 
     def setBoundingBox(self):
         minValues, maxValues = [sys.maxsize]*3, [0]*3
 
-        for vertex in self.vertexes:
+        for vertex in self.vertices:
             for i in range(3):
                 if vertex[i] < minValues[i]: minValues[i] = vertex[i]
                 if vertex[i] > maxValues[i]: maxValues[i] = vertex[i]
@@ -51,9 +51,9 @@ class Mesh:
 
 
     def normalizeMesh(self):
-        for i in range(len(self.vertexes)):
+        for i in range(len(self.vertices)):
             for j in range(3):
-                self.vertexes[i][j] /= max(self.boundingBoxDimensions)
+                self.vertices[i][j] /= max(self.boundingBoxDimensions)
         self.setBoundingBox()
 
 
@@ -61,7 +61,7 @@ class Mesh:
         with open(self.filename[: self.filename.rfind(".")]+"_processed"+self.filename[self.filename.rfind("."):], "w") as outf:
             outf.write("OFF\n")
             outf.write(str(self.numberOfVertices)+" "+str(self.numberOfFaces)+" 0\n")
-            for vertex in self.vertexes:
+            for vertex in self.vertices:
                 s = ""
                 if type(vertex) is int:
                     s += str(vertex)
@@ -80,16 +80,16 @@ class Mesh:
 
     def meshCrasher(self):
         edgesLength = []
-        checkedVertexes = []
-        print("Vertexes before: "+str(len(self.vertexes)))
+        checkedvertices = []
+        print("vertices before: "+str(len(self.vertices)))
         print("Faces before: " + str(len(self.faces)))
         for face in self.faces:
             for i in range(3):
                 j = 0 if i == 2 else i+1
-                if not (face[i] in checkedVertexes and face[j] in checkedVertexes):
-                    checkedVertexes.append([face[i], face[j]])
+                if not (face[i] in checkedvertices and face[j] in checkedvertices):
+                    checkedvertices.append([face[i], face[j]])
                     edgesLength.append((
-                        pow(self.vertexes[face[i]][0] - self.vertexes[face[j]][0], 2) + pow(self.vertexes[face[i]][1] - self.vertexes[face[j]][1], 2) + pow(self.vertexes[face[i]][2] - self.vertexes[face[j]][2], 2),
+                        pow(self.vertices[face[i]][0] - self.vertices[face[j]][0], 2) + pow(self.vertices[face[i]][1] - self.vertices[face[j]][1], 2) + pow(self.vertices[face[i]][2] - self.vertices[face[j]][2], 2),
                         face[i],
                         face[j]
                     ))
@@ -100,15 +100,15 @@ class Mesh:
             for i in range(len(edgesLength)):
                 if count >= 500:
                     break
-                v1 = self.vertexes[edgesLength[i][1]]
-                v2 = self.vertexes[edgesLength[i][2]]
+                v1 = self.vertices[edgesLength[i][1]]
+                v2 = self.vertices[edgesLength[i][2]]
                 if v1 != -1 and v2 != -1:
                     midpoint = [(v1[0]+v2[0])/2, (v1[1]+v2[1])/2, (v1[2]+v2[2])/2]
                     for j in range(len(self.faces)):
                         for k in range(3):
                             if self.faces[j][k] == edgesLength[i][2]: self.faces[j][k] = edgesLength[i][1]
-                    self.vertexes[edgesLength[i][1]] = midpoint
-                    self.vertexes[edgesLength[i][2]] = -1
+                    self.vertices[edgesLength[i][1]] = midpoint
+                    self.vertices[edgesLength[i][2]] = -1
                     count += 1
 
         newFaces = []
@@ -123,13 +123,13 @@ class Mesh:
 
         self.faces = newFaces
         self.numberOfFaces = len(self.faces)
-        self.numberOfVertices = len(self.vertexes)
-        print("Vertexes after: "+str(len(self.vertexes)))
+        self.numberOfVertices = len(self.vertices)
+        print("vertices after: "+str(len(self.vertices)))
         print("Faces after: " + str(len(self.faces)))
 
     def eigen(self):
-        A = np.zeros((3, len(self.vertexes)))
-        for vertex in self.vertexes:
+        A = np.zeros((3, len(self.vertices)))
+        for vertex in self.vertices:
             for j in range(3):
                 A[j] = vertex[j]
 
@@ -149,7 +149,7 @@ class Mesh:
     def flipTest(self):
         sumpos = [0, 0, 0]
         sumneg = [0, 0, 0]
-        vertices = self.vertexes
+        vertices = self.vertices
 
         for i in range(len(vertices)):
             for j in range(3):
@@ -170,9 +170,9 @@ class Mesh:
 
 
 class TrianglesMesh(Mesh):
-    def __init__(self, vertexes, numberOfFaces):
+    def __init__(self, vertices, numberOfFaces):
         self.poligonType = 3
-        Mesh.__init__(vertexes, numberOfFaces)
+        Mesh.__init__(vertices, numberOfFaces)
 
     def draw(self):
         glBegin(GL_TRIANGLES)
@@ -181,9 +181,9 @@ class TrianglesMesh(Mesh):
 
 
 class QuadsMesh(Mesh):
-    def __init__(self, vertexes, numberOfFaces):
+    def __init__(self, vertices, numberOfFaces):
         self.poligonType = 4
-        Mesh.__init__(vertexes, numberOfFaces)
+        Mesh.__init__(vertices, numberOfFaces)
 
     def draw(self):
         glBegin(GL_QUADS)
