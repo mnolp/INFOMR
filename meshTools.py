@@ -2,11 +2,12 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 import array
-import plyfile
 
 # -----------
 # VARIABLES
 # -----------
+
+filepath = "dataset/Airplane/61_processed.off"
 
 g_fViewDistance = 9.
 g_Width = 600
@@ -41,11 +42,16 @@ def read_off(file):
     for i_face in range(n_faces):
         s = file.readline()
         s = s.strip().split(' ')
+        if len(s)==0:
+            pass
         if i_face == 0:
             shape = s[0]
         # for x in range(1, 4):
         #     faces.append(int(s[x]))
-        faces.append([int(s[x]) for x in range(1, 4)])
+        try:
+            faces.append([int(s[x]) for x in range(1, 4)])
+        except IndexError as error:
+            print(i_face+len(verts))
     # finalVerts = []
     # for i in range(len(faces)):
     #     finalVerts.append(verts[faces[i]])
@@ -81,8 +87,8 @@ def mesh_reconstructor(file):
     glBegin(GL_TRIANGLES)
     for face in faces:
         for vertex in face:
-            glNormal3fv(triangleNormal(verticies, face))
             v = verticies[vertex]
+            glNormal3fv(triangleNormal(verticies, face))
             glVertex3fv(v)
     glEnd()
 
@@ -116,20 +122,10 @@ def triangleNormal(vertexes, face):
 
 def scenemodel():
     glRotate(90, 0., 0., 1.)
-    with open("dataset/Airplane/61_processed.off", "r") as f:
-        # mesh_reconstructor(f)
-        meshFromArray(f)
+    with open(filepath, "r") as f:
+        mesh_reconstructor(f)
+        # meshFromArray(f)
 
-
-# ---------
-# PlyLoader
-# ---------
-
-def plyLoader(file):
-    with open(file) as f:
-        plydata = plyfile.PlyData.read(f)
-
-    return plydata
 
 # --------
 # VIEWER
@@ -149,26 +145,18 @@ def printHelp():
     )
 
 def init():
-    glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-
-    glShadeModel(GL_FLAT);
+    glEnable(GL_DEPTH_TEST)
+    glEnable(GL_NORMALIZE)
+    glShadeModel(GL_FLAT)
 
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
 
     glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
     glEnable(GL_COLOR_MATERIAL)
-    glColor3f(0.8, 0.8, 0.8);
+    glColor3f(0.6, 0.6, 0.6);
 
-    glEnable(GL_DEPTH_TEST);
-    # glEnable(GL_NORMALIZE);
-    glDepthFunc(GL_LESS);
-    # glLightfv(GL_LIGHT0, GL_POSITION, [.0, 10.0, 10., 0.])
-    # glLightfv(GL_LIGHT0, GL_AMBIENT, [.0, .0, .0, 1.0]);
-    # glLightfv(GL_LIGHT0, GL_DIFFUSE, [1.0, 1.0, 1.0, 1.0]);
-    # glLightfv(GL_LIGHT0, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0]);
-    glShadeModel(GL_FLAT);
     resetView()
 
 
@@ -185,6 +173,7 @@ def resetView():
 
 def display():
     # Clear frame buffer and depth buffer
+    glClearColor(0.7, 0.7, 0.7, 0.7);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     # Set up viewing transformation, looking down -Z axis
     glLoadIdentity()
@@ -193,6 +182,7 @@ def display():
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     gluPerspective(zoom, float(g_Width) / float(g_Height), g_nearPlane, g_farPlane)
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glMatrixMode(GL_MODELVIEW)
     # Render the scene
     polarView()

@@ -1,6 +1,7 @@
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
+import numpy as np
 
 
 '''
@@ -15,6 +16,7 @@ class Mesh:
         self.numberOfVertices = len(vertexes)
         self.numberOfFaces = len(faces)
         self.boundingBoxDimensions = (0, 0, 0)
+        self.centerOfMass = (0,0,0)
 
     ''' 
     This method computes the center of mass of our point cloud.
@@ -28,6 +30,8 @@ class Mesh:
             for vertex in self.vertexes:
                 sumValues[i] += vertex[i]
             sumValues[i] /= len(self.vertexes)
+
+        self.centerOfMass = (sumValues[0], sumValues[1], sumValues[2])
 
         for i in range(len(self.vertexes)):
             for j in range(3):
@@ -59,11 +63,14 @@ class Mesh:
             outf.write(str(self.numberOfVertices)+" "+str(self.numberOfFaces)+" 0\n")
             for vertex in self.vertexes:
                 s = ""
-                for v in range(len(vertex)):
-                    if v == 0:
-                        s += str(vertex[v])
-                    else:
-                        s += " "+str(vertex[v])
+                if type(vertex) is int:
+                    s += str(vertex)
+                else:
+                    for v in range(len(vertex)):
+                        if v == 0:
+                            s += str(vertex[v])
+                        else:
+                            s += " "+str(vertex[v])
                 outf.write(s+"\n")
             for face in self.faces:
                 s = str(len(face))
@@ -104,21 +111,62 @@ class Mesh:
                     self.vertexes[edgesLength[i][2]] = -1
                     count += 1
 
-        newVertexes = []
-        for i in range(len(self.vertexes)):
-            if self.vertexes[i] != -1:
-                newVertexes.append(self.vertexes[i])
-        self.vertexes = newVertexes
         newFaces = []
         for i in range(len(self.faces)):
             if not self.faces[i] in newFaces:
-                newFaces.append(self.faces[i])
+                flag = True
+                for j in range(len(self.faces[i])-1):
+                    if self.faces[i].count(self.faces[i][j])>1:
+                        flag = False
+                if flag:
+                    newFaces.append(self.faces[i])
+
         self.faces = newFaces
+        self.numberOfFaces = len(self.faces)
+        self.numberOfVertices = len(self.vertexes)
         print("Vertexes after: "+str(len(self.vertexes)))
         print("Faces after: " + str(len(self.faces)))
 
+    def eigen(self):
+        A = np.zeros((3, len(self.vertexes)))
+        for vertex in self.vertexes:
+            for j in range(3):
+                A[j] = vertex[j]
+
+        A_cov = np.cov(A)  # 3x3 matrix
+
+        eigenvalues, eigenvectors = np.linalg.eig(A_cov)
+        temp = eigenvalues
+        eigenvectorssorted = []
+        for i in range(3):
+            eigenvectorssorted.add(eigenvectors[temp.index(max(temp))])
+            temp.remove(max(temp))
+            eigenvectors.remove(eigenvectors[temp.index(max(temp))])
+
+        return eigenvectorssorted
 
 
+    def flipTest(self):
+        sumpos = [0, 0, 0]
+        sumneg = [0, 0, 0]
+        vertices = self.vertexes
+
+        for i in range(len(vertices)):
+            for j in range(3):
+                if vertices[i][j]<=0: sumneg[j]+=1
+                else: sumpos[j] += 1
+
+        flag = [False, False, False]
+        for j in range(3):
+            if sumpos[j] > sumneg[j]: flag[j] = True
+
+        for i in range(len(vertices)):
+            if flag[0]:
+                vertices[i][0] = - vertices[i][0]
+            if flag[1]:
+                vertices[i][1] = - vertices[i][1]
+            if flag[2]:
+                vertices[i][2] = - vertices[i][2]
 
 
 class TrianglesMesh(Mesh):
