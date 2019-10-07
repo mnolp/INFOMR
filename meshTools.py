@@ -7,7 +7,7 @@ import array
 # VARIABLES
 # -----------
 
-filepath = "dataset/Airplane/61_processed.off"
+filepath = "dataset/Airplane/62_processed.off"
 
 g_fViewDistance = 9.
 g_Width = 600

@@ -4,16 +4,18 @@ import Mesh
 
 
 def main():
-    filepath = "dataset/Airplane/61_processed.off"
+    filepath = "dataset/Airplane/62.off"
     with open(filepath, "r") as f:
         shape, vertexes, faces = meshTools.read_off(f)
     m = Mesh.Mesh(filepath, vertexes, faces)
-    m.meshCrasher()
+    m.setMeshToCenter()
+    m.normalizeMesh()
+    m.eigen()
+    m.changingBase()
+    m.flipTest()
     m.toFile()
+
     meshTools.meshRenderer()
-    # m.setMeshToCenter()
-    # m.normalizeMesh()
-    # m.toFile()
 
     # a, b = databaseTools.claReader("benchmark/classification/v1/base/train.cla")
     # with open("out.txt", "w") as f:

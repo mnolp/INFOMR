@@ -17,6 +17,7 @@ class Mesh:
         self.numberOfFaces = len(faces)
         self.boundingBoxDimensions = (0, 0, 0)
         self.centerOfMass = (0,0,0)
+        self.eigenvectors = []
 
     ''' 
     This method computes the center of mass of our point cloud.
@@ -129,22 +130,43 @@ class Mesh:
 
     def eigen(self):
         A = np.zeros((3, len(self.vertices)))
-        for vertex in self.vertices:
-            for j in range(3):
-                A[j] = vertex[j]
+        for i in range(3):
+            for j in range(len(self.vertices)):
+                A[i][j] = self.vertices[j][i]
 
         A_cov = np.cov(A)  # 3x3 matrix
 
         eigenvalues, eigenvectors = np.linalg.eig(A_cov)
-        temp = eigenvalues
+        print(eigenvectors)
+        print(eigenvalues)
+        temp = eigenvalues.tolist()
+        eigenvectors = eigenvectors.tolist()
         eigenvectorssorted = []
         for i in range(3):
-            eigenvectorssorted.add(eigenvectors[temp.index(max(temp))])
+            # index = np.where(temp == max(temp))
+            index = temp.index(max(temp))
+            eigenvectorssorted.append(eigenvectors[index])
+            del eigenvectors[temp.index(max(temp))]
             temp.remove(max(temp))
-            eigenvectors.remove(eigenvectors[temp.index(max(temp))])
 
-        return eigenvectorssorted
+        self.eigenvectors = eigenvectorssorted
 
+
+    def changingBase(self):
+        print(self.eigenvectors)
+        for i in range(len(self.vertices)):
+            if not self.vertices[i] == -1:
+                temp = np.dot(self.eigenvectors, self.vertices[i])
+                self.vertices[i] = [temp[0], temp[1], temp[2]]
+                # temp = []
+                # for j in range(3):
+                #     t = self.vertices[i][j]*self.eigenvectors[j]
+                #     t = t[0].tolist()
+                #     t = t[0]+t[1]+t[2]
+                #     temp.append(t)
+                # self.vertices[i] = temp
+        self.eigen()
+        print(self.eigenvectors)
 
     def flipTest(self):
         sumpos = [0, 0, 0]
@@ -158,8 +180,10 @@ class Mesh:
 
         flag = [False, False, False]
         for j in range(3):
-            if sumpos[j] > sumneg[j]: flag[j] = True
-
+            if sumpos[j] > sumneg[j]:
+                flag[j] = True
+                print(str(j+1)+" flipped!")
+        print("Sumpos: "+str(sumpos)+"\nSumneg: "+str(sumneg))
         for i in range(len(vertices)):
             if flag[0]:
                 vertices[i][0] = - vertices[i][0]
