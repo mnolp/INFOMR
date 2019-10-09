@@ -1,15 +1,17 @@
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
-import array
+import cv2
+import math
+from PIL import Image
+import numpy as np
 
 # -----------
 # VARIABLES
 # -----------
 
-filepath = "dataset/Airplane/62_processed.off"
 
-g_fViewDistance = 9.
+g_fViewDistance = 1.5
 g_Width = 600
 g_Height = 600
 
@@ -26,6 +28,8 @@ zRotate = 0.
 
 xTrans = 0.
 yTrans = 0.
+
+FILE_PATH = ''
 
 
 # -------------------
@@ -60,11 +64,11 @@ def read_off(file):
 
 
 def meshFromArray(file):
-    shape, vertexes, faces = read_off(file)
+    shape, vertices, faces = read_off(file)
     glEnableClientState(GL_VERTEX_ARRAY)
     #glEnableClientState(GL_NORMAL_ARRAY)
-    glVertexPointer(3, GL_FLOAT, 0, vertexes)
-    #glNormalPointer(GL_FLOAT, len(faces), triangularMeshNormals(vertexes, faces))
+    glVertexPointer(3, GL_FLOAT, 0, vertices)
+    #glNormalPointer(GL_FLOAT, len(faces), triangularMeshNormals(vertices, faces))
     glDrawElements(GL_TRIANGLES, len(faces), GL_UNSIGNED_INT, faces)
     glDisableClientState(GL_VERTEX_ARRAY)
     glDisableClientState(GL_NORMAL_ARRAY)
@@ -93,21 +97,21 @@ def mesh_reconstructor(file):
     glEnd()
 
 
-def triangularMeshNormals(vertexes, faces):
+def triangularMeshNormals(vertices, faces):
     normals = []
     for i in range(len(faces)):
         if i%3 == 0:
-            faceNormal = triangleNormal(vertexes, (faces[i], faces[i+1], faces[i+2]))
+            faceNormal = triangleNormal(vertices, (faces[i], faces[i+1], faces[i+2]))
             normals.append([faceNormal]*3)
     return normals
 
-def triangleNormal(vertexes, face):
-    ux = vertexes[face[1]][0] - vertexes[face[0]][0]
-    uy = vertexes[face[1]][1] - vertexes[face[0]][1]
-    uz = vertexes[face[1]][2] - vertexes[face[0]][2]
-    vx = vertexes[face[2]][0] - vertexes[face[0]][0]
-    vy = vertexes[face[2]][1] - vertexes[face[0]][1]
-    vz = vertexes[face[2]][2] - vertexes[face[0]][2]
+def triangleNormal(vertices, face):
+    ux = vertices[face[1]][0] - vertices[face[0]][0]
+    uy = vertices[face[1]][1] - vertices[face[0]][1]
+    uz = vertices[face[1]][2] - vertices[face[0]][2]
+    vx = vertices[face[2]][0] - vertices[face[0]][0]
+    vy = vertices[face[2]][1] - vertices[face[0]][1]
+    vz = vertices[face[2]][2] - vertices[face[0]][2]
 
     x = (uy*vz)-(uz-vy)
     y = (uz*vx)-(ux-vz)
@@ -122,9 +126,15 @@ def triangleNormal(vertexes, face):
 
 def scenemodel():
     glRotate(90, 0., 0., 1.)
-    with open(filepath, "r") as f:
+    with open(FILE_PATH, "r") as f:
         mesh_reconstructor(f)
         # meshFromArray(f)
+    x, y, width, height = glGetIntegerv(GL_VIEWPORT)
+    glPixelStorei(GL_PACK_ALIGNMENT, 1)
+
+    data = glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE)
+    image = Image.frombytes("RGB", (width, height), data)
+    image.save(FILE_PATH[FILE_PATH.rfind('/'): FILE_PATH.rfind('.')]+"_silhouette.png", format="png")
 
 
 # --------
@@ -146,16 +156,16 @@ def printHelp():
 
 def init():
     glLoadIdentity()
-    glEnable(GL_DEPTH_TEST)
-    glEnable(GL_NORMALIZE)
-    glShadeModel(GL_FLAT)
-
-    glEnable(GL_LIGHTING)
-    glEnable(GL_LIGHT0)
-
-    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
+    # glEnable(GL_DEPTH_TEST)
+    # glEnable(GL_NORMALIZE)
+    # glShadeModel(GL_FLAT)
+    #
+    # glEnable(GL_LIGHTING)
+    # glEnable(GL_LIGHT0)
+    #
+    # glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
     glEnable(GL_COLOR_MATERIAL)
-    glColor3f(0.6, 0.6, 0.6);
+    glColor3f(0, 0, 0)
 
     resetView()
 
@@ -173,7 +183,7 @@ def resetView():
 
 def display():
     # Clear frame buffer and depth buffer
-    glClearColor(0.7, 0.7, 0.7, 0.7);
+    glClearColor(1, 1, 1, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     # Set up viewing transformation, looking down -Z axis
     glLoadIdentity()
@@ -182,13 +192,14 @@ def display():
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     gluPerspective(zoom, float(g_Width) / float(g_Height), g_nearPlane, g_farPlane)
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
     glMatrixMode(GL_MODELVIEW)
     # Render the scene
     polarView()
     scenemodel()
     # Make sure changes appear onscreen
     glutSwapBuffers()
+
 
 
 def reshape(width, height):
@@ -210,8 +221,15 @@ def keyboard(key, x, y):
     global zTr, yTr, xTr
     if (key == 'r'): resetView()
     if (key == 'q'): exit(0)
+    if (key == 'p'): toimage()
     glutPostRedisplay()
 
+
+def toimage():
+    image_buffer = glReadPixels(0, 0, g_Width, g_Height, GL_RGB, GL_UNSIGNED_BYTE)
+    image = Image.frombytes("RGB", (g_Width, g_Height), image_buffer)
+    image = image.transpose(Image.FLIP_LEFT_RIGHT)
+    image.save("image.png", format="png")
 
 def mouse(button, state, x, y):
     global action, xStart, yStart
@@ -254,8 +272,10 @@ def motion(x, y):
 # ------
 # MAIN
 # ------
-def meshRenderer ():
+def meshRenderer (filepath):
     # GLUT Window Initialization
+    global FILE_PATH
+    FILE_PATH = filepath
     glutInit()
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)  # zBuffer
     glutInitWindowSize(g_Width, g_Height)
@@ -274,12 +294,14 @@ def meshRenderer ():
     glutMainLoop()
 
 
-def getPositionDimensions(vertexes):
+
+
+def getPositionDimensions(vertices):
     maxx, maxy, maxz = 0, 0, 0
     minx, miny, minz = sys.maxsize
     sumx, sumy, sumz = 0, 0, 0
 
-    for vertex in vertexes:
+    for vertex in vertices:
         if vertex[0] < minx: minx = vertex[0]
         if vertex[0] < miny: miny = vertex[1]
         if vertex[0] < minz: minz = vertex[2]
@@ -290,41 +312,15 @@ def getPositionDimensions(vertexes):
         sumx += vertex[0]
         sumy += vertex[1]
         sumz += vertex[2]
-    sumx /= len(vertexes)
-    sumy /= len(vertexes)
-    sumz /= len(vertexes)
+    sumx /= len(vertices)
+    sumy /= len(vertices)
+    sumz /= len(vertices)
 
     return ([minx, miny, minz], [maxx, maxy, maxz], [sumx, sumy, sumz])
 
-def moveMeshToCenter(vertexes, delta):
-    for i in range(len(vertexes)):
+def moveMeshToCenter(vertices, delta):
+    for i in range(len(vertices)):
         for j in range(3):
-            vertexes[i][j] -= delta[j]
-    return vertexes
+            vertices[i][j] -= delta[j]
+    return vertices
 
-import math
-def meshReducer(filepath):
-    with open(filepath, "r") as f:
-        shape, vertexes, faces = read_off(f)
-
-
-    dist = 0
-    count = 0
-    checked = []
-    for face in faces:
-        for i in range(len(face)):
-            j = i+1
-            if i == 2: j = 0
-
-            v1 = vertexes[face[i]]
-            v2 = vertexes[face[j]]
-            if (v1, v2) in checked or (v2, v1) in checked:
-                pass
-            else:
-                count += 1
-                dist += math.sqrt(pow(v1[0]-v2[0], 2) + pow(v1[1]-v2[1], 2) + pow(v1[2]-v2[2], 2))
-                checked.append((v1, v2))
-
-    print(dist)
-    print(count)
-    print(dist/count)

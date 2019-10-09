@@ -1,21 +1,39 @@
 import meshTools
 #import databaseTools
 import Mesh
+import os
+
+
+def getofffiles(path):
+    files = []
+    for r, d, f in os.walk(path):
+        for file in f:
+            if file.endswith('.off') and not file.endswith('_processed.off'):
+                files.append(os.path.join(r, file))
+
+    return files
 
 
 def main():
-    filepath = "dataset/Airplane/62.off"
-    with open(filepath, "r") as f:
-        shape, vertexes, faces = meshTools.read_off(f)
-    m = Mesh.Mesh(filepath, vertexes, faces)
-    m.setMeshToCenter()
-    m.normalizeMesh()
-    m.eigen()
-    m.changingBase()
-    m.flipTest()
-    m.toFile()
+    # files = getofffiles("dataset")
 
-    meshTools.meshRenderer()
+    # files = ["dataset/Airplane/64.off"]
+    # for filepath in files:
+    #     with open(filepath, "r") as f:
+    #         shape, vertexes, faces = meshTools.read_off(f)
+    #     m = Mesh.Mesh(filepath, vertexes, faces)
+    #     m.setMeshToCenter()
+    #     m.setBoundingBox()
+    #     m.normalizeMesh()
+    #     m.eigen()
+    #     m.changingBase()
+    #     m.setBoundingBox()
+    #     m.normalizeMesh()
+    #     m.flipTest()
+    #     m.toFile()
+    #     m.toimage()
+    #
+    meshTools.meshRenderer("dataset/Airplane/64_processed.off")
 
     # a, b = databaseTools.claReader("benchmark/classification/v1/base/train.cla")
     # with open("out.txt", "w") as f:

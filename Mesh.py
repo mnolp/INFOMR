@@ -2,6 +2,12 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 import numpy as np
+from PIL import Image
+import cv2
+import glfw
+
+# DISPLAY_WIDTH = 2000
+# DISPLAY_HEIGHT = 2000
 
 
 '''
@@ -16,7 +22,7 @@ class Mesh:
         self.numberOfVertices = len(vertices)
         self.numberOfFaces = len(faces)
         self.boundingBoxDimensions = (0, 0, 0)
-        self.centerOfMass = (0,0,0)
+        self.centerOfMass = (0, 0, 0)
         self.eigenvectors = []
 
     ''' 
@@ -82,8 +88,7 @@ class Mesh:
     def meshCrasher(self):
         edgesLength = []
         checkedvertices = []
-        print("vertices before: "+str(len(self.vertices)))
-        print("Faces before: " + str(len(self.faces)))
+
         for face in self.faces:
             for i in range(3):
                 j = 0 if i == 2 else i+1
@@ -125,8 +130,7 @@ class Mesh:
         self.faces = newFaces
         self.numberOfFaces = len(self.faces)
         self.numberOfVertices = len(self.vertices)
-        print("vertices after: "+str(len(self.vertices)))
-        print("Faces after: " + str(len(self.faces)))
+
 
     def eigen(self):
         A = np.zeros((3, len(self.vertices)))
@@ -137,8 +141,6 @@ class Mesh:
         A_cov = np.cov(A)  # 3x3 matrix
 
         eigenvalues, eigenvectors = np.linalg.eig(A_cov)
-        print(eigenvectors)
-        print(eigenvalues)
         temp = eigenvalues.tolist()
         eigenvectors = eigenvectors.tolist()
         eigenvectorssorted = []
@@ -153,20 +155,11 @@ class Mesh:
 
 
     def changingBase(self):
-        print(self.eigenvectors)
         for i in range(len(self.vertices)):
             if not self.vertices[i] == -1:
                 temp = np.dot(self.eigenvectors, self.vertices[i])
                 self.vertices[i] = [temp[0], temp[1], temp[2]]
-                # temp = []
-                # for j in range(3):
-                #     t = self.vertices[i][j]*self.eigenvectors[j]
-                #     t = t[0].tolist()
-                #     t = t[0]+t[1]+t[2]
-                #     temp.append(t)
-                # self.vertices[i] = temp
         self.eigen()
-        print(self.eigenvectors)
 
     def flipTest(self):
         sumpos = [0, 0, 0]
@@ -182,8 +175,6 @@ class Mesh:
         for j in range(3):
             if sumpos[j] > sumneg[j]:
                 flag[j] = True
-                print(str(j+1)+" flipped!")
-        print("Sumpos: "+str(sumpos)+"\nSumneg: "+str(sumneg))
         for i in range(len(vertices)):
             if flag[0]:
                 vertices[i][0] = - vertices[i][0]
@@ -192,6 +183,54 @@ class Mesh:
             if flag[2]:
                 vertices[i][2] = - vertices[i][2]
 
+    def toimage(self):
+        width = 2560
+        height = 1510
+        x = 0
+        y = 0
+        # Initialize the library
+        if not glfw.init():
+            return
+        # Set window hint NOT visible
+        # glfw.window_hint(glfw.VISIBLE, False)
+
+        # Create a windowed mode window and its OpenGL context
+        window = glfw.create_window(width, height, "hidden window", None, None)
+        if not window:
+            glfw.terminate()
+            return
+
+        glfw.make_context_current(window)
+
+        glClearColor(1, 1, 1, 1)
+        # gluLookAt(0, 0, -g_fViewDistance, 0, 0, 0, -.1, 0, 0)  # -.1,0,0
+        # gluPerspective(90, (DISPLAY_WIDTH / DISPLAY_HEIGHT), 0.01, 12)
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glLoadIdentity()
+        # glEnable(GL_TEXTURE_2D)
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LEQUAL)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        glEnable(GL_COLOR_MATERIAL)
+        glColor3f(0, 0, 0)
+        glBegin(GL_TRIANGLES)
+        for face in self.faces:
+            for vertex in face:
+                glVertex3fv(self.vertices[vertex])
+        glEnd()
+        x, y, width, height = glGetIntegerv(GL_VIEWPORT)
+        glPixelStorei(GL_PACK_ALIGNMENT, 1)
+
+        data = glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE)
+        image = Image.frombytes("RGB", (width, height), data)
+        image = image.transpose(Image.FLIP_LEFT_RIGHT)
+        image.save("image.png", format="png")
+        #
+        # image = np.fromstring(image_buffer, dtype=np.uint8).reshape(DISPLAY_HEIGHT, DISPLAY_WIDTH, 3)
+        # cv2.imwrite("image.png", np.fliplr(image))
+        # glfw.destroy_window(window)
+        # glfw.terminate()
 
 class TrianglesMesh(Mesh):
     def __init__(self, vertices, numberOfFaces):
