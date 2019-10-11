@@ -1,10 +1,8 @@
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
-import cv2
 import math
 from PIL import Image
-import numpy as np
 
 # -----------
 # VARIABLES
@@ -129,12 +127,7 @@ def scenemodel():
     with open(FILE_PATH, "r") as f:
         mesh_reconstructor(f)
         # meshFromArray(f)
-    x, y, width, height = glGetIntegerv(GL_VIEWPORT)
-    glPixelStorei(GL_PACK_ALIGNMENT, 1)
 
-    data = glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE)
-    image = Image.frombytes("RGB", (width, height), data)
-    image.save(FILE_PATH[FILE_PATH.rfind('/'): FILE_PATH.rfind('.')]+"_silhouette.png", format="png")
 
 
 # --------
@@ -197,9 +190,42 @@ def display():
     # Render the scene
     polarView()
     scenemodel()
+    drawAxis()
+    drawEigen()
     # Make sure changes appear onscreen
     glutSwapBuffers()
 
+
+def drawAxis():
+
+    glBegin(GL_LINES)
+    # draw line for x axis
+    glColor3f(1.0, 0.0, 0.0)
+    glVertex3f(0.0, 0.0, 0.0)
+    glVertex3f(1.0, 0.0, 0.0)
+    # draw line for y axis
+    glColor3f(0.0, 1.0, 0.0)
+    glVertex3f(0.0, 0.0, 0.0)
+    glVertex3f(0.0, 1.0, 0.0)
+    # drawline for Z axis
+    glColor3f(0.0, 0.0, 1.0)
+    glVertex3f(0.0, 0.0, 0.0)
+    glVertex3f(0.0, 0.0, 1.0)
+    glEnd()
+    # load the previous matrix
+
+
+eigenVectors = []
+def drawEigen():
+
+    c = [0.0, 0.0, 0.0]
+    glBegin(GL_LINES)
+    for i in range(len(eigenVectors)):
+        c[i] = 1.0
+        glColor3fv(c)
+        glVertex3f(0.0, 0.0, 0.0)
+        glVertex3fv(eigenVectors[i])
+    glEnd()
 
 
 def reshape(width, height):
@@ -219,17 +245,10 @@ def polarView():
 
 def keyboard(key, x, y):
     global zTr, yTr, xTr
-    if (key == 'r'): resetView()
-    if (key == 'q'): exit(0)
-    if (key == 'p'): toimage()
+    if (key == b'r'): resetView()
+    if (key == b'q'): sys.exit(0)
     glutPostRedisplay()
 
-
-def toimage():
-    image_buffer = glReadPixels(0, 0, g_Width, g_Height, GL_RGB, GL_UNSIGNED_BYTE)
-    image = Image.frombytes("RGB", (g_Width, g_Height), image_buffer)
-    image = image.transpose(Image.FLIP_LEFT_RIGHT)
-    image.save("image.png", format="png")
 
 def mouse(button, state, x, y):
     global action, xStart, yStart
@@ -272,10 +291,12 @@ def motion(x, y):
 # ------
 # MAIN
 # ------
-def meshRenderer (filepath):
+def meshRenderer (filepath, eigenV):
     # GLUT Window Initialization
     global FILE_PATH
     FILE_PATH = filepath
+    global eigenVectors
+    eigenVectors = eigenV
     glutInit()
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)  # zBuffer
     glutInitWindowSize(g_Width, g_Height)

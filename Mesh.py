@@ -24,6 +24,8 @@ class Mesh:
         self.boundingBoxDimensions = (0, 0, 0)
         self.centerOfMass = (0, 0, 0)
         self.eigenvectors = []
+        self.eigenvalues = []
+        self.old_eignvectors = []
 
     ''' 
     This method computes the center of mass of our point cloud.
@@ -141,6 +143,8 @@ class Mesh:
         A_cov = np.cov(A)  # 3x3 matrix
 
         eigenvalues, eigenvectors = np.linalg.eig(A_cov)
+
+        self.eigenvalues = eigenvalues
         temp = eigenvalues.tolist()
         eigenvectors = eigenvectors.tolist()
         eigenvectorssorted = []
@@ -151,7 +155,9 @@ class Mesh:
             del eigenvectors[temp.index(max(temp))]
             temp.remove(max(temp))
 
+        self.old_eignvectors = self.eigenvectors
         self.eigenvectors = eigenvectorssorted
+
 
 
     def changingBase(self):
@@ -160,6 +166,7 @@ class Mesh:
                 temp = np.dot(self.eigenvectors, self.vertices[i])
                 self.vertices[i] = [temp[0], temp[1], temp[2]]
         self.eigen()
+
 
     def flipTest(self):
         sumpos = [0, 0, 0]
@@ -184,33 +191,28 @@ class Mesh:
                 vertices[i][2] = - vertices[i][2]
 
     def toimage(self):
-        width = 2560
-        height = 1510
+        width = 600
+        height = 600
         x = 0
         y = 0
         # Initialize the library
         if not glfw.init():
             return
         # Set window hint NOT visible
-        # glfw.window_hint(glfw.VISIBLE, False)
-
+        glfw.window_hint(glfw.VISIBLE, False)
         # Create a windowed mode window and its OpenGL context
         window = glfw.create_window(width, height, "hidden window", None, None)
         if not window:
             glfw.terminate()
             return
-
         glfw.make_context_current(window)
 
         glClearColor(1, 1, 1, 1)
-        # gluLookAt(0, 0, -g_fViewDistance, 0, 0, 0, -.1, 0, 0)  # -.1,0,0
-        # gluPerspective(90, (DISPLAY_WIDTH / DISPLAY_HEIGHT), 0.01, 12)
+        gluLookAt(self.eigenvectors[2][0], self.eigenvectors[2][1], self.eigenvectors[2][2]*1/2, 0, 0, 0, 0, 1, 1)
+        # gluPerspective(90, (width / height), 0.01, 12)
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glLoadIdentity()
-        # glEnable(GL_TEXTURE_2D)
-        glEnable(GL_DEPTH_TEST)
-        glDepthFunc(GL_LEQUAL)
+        glMatrixMode(GL_PROJECTION)
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
         glEnable(GL_COLOR_MATERIAL)
         glColor3f(0, 0, 0)
@@ -219,18 +221,31 @@ class Mesh:
             for vertex in face:
                 glVertex3fv(self.vertices[vertex])
         glEnd()
-        x, y, width, height = glGetIntegerv(GL_VIEWPORT)
-        glPixelStorei(GL_PACK_ALIGNMENT, 1)
+        glBegin(GL_LINES)
+        # draw line for x axis
+        glColor3f(1.0, 0.0, 0.0)
+        glVertex3f(0, 0, 0)
+        glVertex3fv(self.eigenvectors[0])
+        glColor3f(0.0, 1.0, 0.0)
+        glVertex3f(0, 0, 0)
+        glVertex3fv(self.eigenvectors[1])
+        glColor3f(0.0, 0.0, 1.0)
+        glVertex3f(0, 0, 0)
+        glVertex3fv(self.eigenvectors[2])
+        glEnd()
 
-        data = glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE)
+        # gluLookAt(self.old_eignvectors[2][0], self.old_eignvectors[2][1], self.old_eignvectors[2][2], 0, 0, 0, 1, 1, 0)
+        # gluLookAt(0, 2, 3, 0, 0, 0, 1, 2, 0)
+        x, y, width, height = glGetIntegerv(GL_VIEWPORT)
+        # glPixelStorei(GL_PACK_ALIGNMENT, 1)
+
+        data = glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
         image = Image.frombytes("RGB", (width, height), data)
         image = image.transpose(Image.FLIP_LEFT_RIGHT)
-        image.save("image.png", format="png")
-        #
-        # image = np.fromstring(image_buffer, dtype=np.uint8).reshape(DISPLAY_HEIGHT, DISPLAY_WIDTH, 3)
-        # cv2.imwrite("image.png", np.fliplr(image))
-        # glfw.destroy_window(window)
-        # glfw.terminate()
+        image.save(self.filename[: self.filename.rfind('/')] + self.filename[self.filename.rfind('/'): self.filename.rfind('.')] + "_silhouette.png", format="png")
+
+        glfw.destroy_window(window)
+        glfw.terminate()
 
 class TrianglesMesh(Mesh):
     def __init__(self, vertices, numberOfFaces):
