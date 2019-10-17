@@ -61,17 +61,6 @@ def read_off(file):
     return shape, verts, faces
 
 
-def meshFromArray(file):
-    shape, vertices, faces = read_off(file)
-    glEnableClientState(GL_VERTEX_ARRAY)
-    #glEnableClientState(GL_NORMAL_ARRAY)
-    glVertexPointer(3, GL_FLOAT, 0, vertices)
-    #glNormalPointer(GL_FLOAT, len(faces), triangularMeshNormals(vertices, faces))
-    glDrawElements(GL_TRIANGLES, len(faces), GL_UNSIGNED_INT, faces)
-    glDisableClientState(GL_VERTEX_ARRAY)
-    glDisableClientState(GL_NORMAL_ARRAY)
-
-
 def mesh_reconstructor(file):
     shape, verticies, faces = read_off(file)
     #
@@ -93,15 +82,6 @@ def mesh_reconstructor(file):
             glNormal3fv(triangleNormal(verticies, face))
             glVertex3fv(v)
     glEnd()
-
-
-def triangularMeshNormals(vertices, faces):
-    normals = []
-    for i in range(len(faces)):
-        if i%3 == 0:
-            faceNormal = triangleNormal(vertices, (faces[i], faces[i+1], faces[i+2]))
-            normals.append([faceNormal]*3)
-    return normals
 
 def triangleNormal(vertices, face):
     ux = vertices[face[1]][0] - vertices[face[0]][0]
@@ -149,16 +129,16 @@ def printHelp():
 
 def init():
     glLoadIdentity()
-    # glEnable(GL_DEPTH_TEST)
-    # glEnable(GL_NORMALIZE)
-    # glShadeModel(GL_FLAT)
+    glEnable(GL_DEPTH_TEST)
+    glEnable(GL_NORMALIZE)
+    glShadeModel(GL_FLAT)
     #
-    # glEnable(GL_LIGHTING)
-    # glEnable(GL_LIGHT0)
+    glEnable(GL_LIGHTING)
+    glEnable(GL_LIGHT0)
     #
-    # glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
+    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
     glEnable(GL_COLOR_MATERIAL)
-    glColor3f(0, 0, 0)
+    glColor3f(0.5, 0.5, 0.5)
 
     resetView()
 
@@ -180,7 +160,7 @@ def display():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     # Set up viewing transformation, looking down -Z axis
     glLoadIdentity()
-    gluLookAt(0, 0, -g_fViewDistance, 0, 0, 0, -.1, 0, 0)  # -.1,0,0
+    gluLookAt(0, 0, 2.5, 0, 0, 0, -.1, 0, 0)  # -.1,0,0
     # Set perspective (also zoom)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
@@ -190,8 +170,8 @@ def display():
     # Render the scene
     polarView()
     scenemodel()
-    drawAxis()
-    drawEigen()
+    # drawAxis()
+    # drawEigen()
     # Make sure changes appear onscreen
     glutSwapBuffers()
 

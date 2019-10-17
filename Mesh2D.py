@@ -14,12 +14,10 @@ class Mesh2D:
         self.area, self.perimeter = len(self.area_pixels), len(self.perimeter_pixels)
         self.bounding_box = self.get_bounding_box()
         self.rectangularity = self.get_rectangularity()
-        self.eccentricity = self.get_eccentricity()
+        # self.eccentricity = self.get_eccentricity()
         self.diameter = self.get_diameter()
         self.skeleton = self.get_skeleton()
-
-
-
+        self.seleton_length = self.get_skeleton_length()
 
 
     def get_area_perimeter(self):

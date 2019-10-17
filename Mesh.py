@@ -3,8 +3,9 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 import numpy as np
 from PIL import Image
-import cv2
+import cv2, math
 import glfw
+import Mesh2D
 
 # DISPLAY_WIDTH = 2000
 # DISPLAY_HEIGHT = 2000
@@ -21,11 +22,15 @@ class Mesh:
         self.filename = filename
         self.numberOfVertices = len(vertices)
         self.numberOfFaces = len(faces)
-        self.boundingBoxDimensions = (0, 0, 0)
-        self.centerOfMass = (0, 0, 0)
-        self.eigenvectors = []
+        self.setMeshToCenter()
+        # self.boundingBoxDimensions = self.setBoundingBox()
+        self.eigenvectors = self.eigen()
         self.eigenvalues = []
-        self.old_eignvectors = []
+        self.changingBase()
+        self.boundingBoxDimensions = self.setBoundingBox()
+        self.normalizeMesh()
+        # self.old_eignvectors = []
+        # self.mesh2d = Mesh2D.Mesh2D(self.toimage())
 
     ''' 
     This method computes the center of mass of our point cloud.
@@ -40,12 +45,9 @@ class Mesh:
                 sumValues[i] += vertex[i]
             sumValues[i] /= len(self.vertices)
 
-        self.centerOfMass = (sumValues[0], sumValues[1], sumValues[2])
-
         for i in range(len(self.vertices)):
             for j in range(3):
                 self.vertices[i][j] -= sumValues[j]
-        self.setBoundingBox()
 
 
     def setBoundingBox(self):
@@ -56,7 +58,7 @@ class Mesh:
                 if vertex[i] < minValues[i]: minValues[i] = vertex[i]
                 if vertex[i] > maxValues[i]: maxValues[i] = vertex[i]
 
-        self.boundingBoxDimensions = (maxValues[0]-minValues[0], maxValues[1]-minValues[1], maxValues[2]-minValues[2])
+        return (maxValues[0]-minValues[0], maxValues[1]-minValues[1], maxValues[2]-minValues[2])
 
 
     def normalizeMesh(self):
@@ -143,7 +145,8 @@ class Mesh:
         A_cov = np.cov(A)  # 3x3 matrix
 
         eigenvalues, eigenvectors = np.linalg.eig(A_cov)
-
+        print(eigenvectors)
+        print(eigenvalues)
         self.eigenvalues = eigenvalues
         temp = eigenvalues.tolist()
         eigenvectors = eigenvectors.tolist()
@@ -154,17 +157,20 @@ class Mesh:
             eigenvectorssorted.append(eigenvectors[index])
             del eigenvectors[temp.index(max(temp))]
             temp.remove(max(temp))
-
-        self.old_eignvectors = self.eigenvectors
-        self.eigenvectors = eigenvectorssorted
+        print(eigenvectorssorted)
+        # self.old_eignvectors = self.eigenvectors
+        return eigenvectorssorted
 
 
 
     def changingBase(self):
+        print(self.vertices[0])
         for i in range(len(self.vertices)):
             if not self.vertices[i] == -1:
-                temp = np.dot(self.eigenvectors, self.vertices[i])
+                # temp = np.dot(self.eigenvectors, self.vertices[i])
+                temp = np.dot(self.vertices[i], self.eigenvectors)
                 self.vertices[i] = [temp[0], temp[1], temp[2]]
+        print(self.vertices[0])
         self.eigen()
 
 
@@ -190,17 +196,16 @@ class Mesh:
             if flag[2]:
                 vertices[i][2] = - vertices[i][2]
 
+
     def toimage(self):
         width = 600
         height = 600
         x = 0
         y = 0
-        # Initialize the library
+
         if not glfw.init():
             return
-        # Set window hint NOT visible
         glfw.window_hint(glfw.VISIBLE, False)
-        # Create a windowed mode window and its OpenGL context
         window = glfw.create_window(width, height, "hidden window", None, None)
         if not window:
             glfw.terminate()
@@ -208,14 +213,32 @@ class Mesh:
         glfw.make_context_current(window)
 
         glClearColor(1, 1, 1, 1)
-        gluLookAt(self.eigenvectors[2][0], self.eigenvectors[2][1], self.eigenvectors[2][2]*1/2, 0, 0, 0, 0, 1, 1)
-        # gluPerspective(90, (width / height), 0.01, 12)
+        glDisable(GL_LIGHTING)
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+        z_vec = 0
+        z = 0
+        for i in range(len(self.eigenvectors)):
+            if abs(self.eigenvectors[i][2])>z: z_vec = i
+
+        gluLookAt(
+            self.eigenvectors[z_vec][0], self.eigenvectors[z_vec][1], self.eigenvectors[z_vec][2],              # eye position
+            # 0, 0, 0,
+            0, 0, 0,                                                                                # focus point
+            0, 1, 0                                                                                 # up vector
+        )
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
         glMatrixMode(GL_PROJECTION)
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        glLoadIdentity()
+        glOrtho(-1, 1, -1, 1, -5, 5)
+
+        glMatrixMode(GL_MODELVIEW)
+
         glEnable(GL_COLOR_MATERIAL)
         glColor3f(0, 0, 0)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
         glBegin(GL_TRIANGLES)
         for face in self.faces:
             for vertex in face:
@@ -233,19 +256,22 @@ class Mesh:
         glVertex3f(0, 0, 0)
         glVertex3fv(self.eigenvectors[2])
         glEnd()
+        glFlush()
 
-        # gluLookAt(self.old_eignvectors[2][0], self.old_eignvectors[2][1], self.old_eignvectors[2][2], 0, 0, 0, 1, 1, 0)
-        # gluLookAt(0, 2, 3, 0, 0, 0, 1, 2, 0)
+
         x, y, width, height = glGetIntegerv(GL_VIEWPORT)
-        # glPixelStorei(GL_PACK_ALIGNMENT, 1)
+        glPixelStorei(GL_PACK_ALIGNMENT, 1)
 
         data = glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
         image = Image.frombytes("RGB", (width, height), data)
         image = image.transpose(Image.FLIP_LEFT_RIGHT)
-        image.save(self.filename[: self.filename.rfind('/')] + self.filename[self.filename.rfind('/'): self.filename.rfind('.')] + "_silhouette.png", format="png")
+        imagename = self.filename[: self.filename.rfind('/')] + self.filename[self.filename.rfind('/'): self.filename.rfind('.')] + "_silhouette.png"
+        image.save(imagename, format="png")
 
         glfw.destroy_window(window)
         glfw.terminate()
+
+        return imagename
 
 class TrianglesMesh(Mesh):
     def __init__(self, vertices, numberOfFaces):
