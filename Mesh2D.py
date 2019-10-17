@@ -14,10 +14,10 @@ class Mesh2D:
         self.area, self.perimeter = len(self.area_pixels), len(self.perimeter_pixels)
         self.bounding_box = self.get_bounding_box()
         self.rectangularity = self.get_rectangularity()
-        # self.eccentricity = self.get_eccentricity()
+        self.compactness = self.get_compactness()
         self.diameter = self.get_diameter()
         self.skeleton = self.get_skeleton()
-        self.seleton_length = self.get_skeleton_length()
+        self.skeleton_length = self.get_skeleton_length()
 
 
     def get_area_perimeter(self):
@@ -47,11 +47,11 @@ class Mesh2D:
         return (area, perimeter)
 
     def get_compactness(self):
-        return pow(mesh.perimeter, 2)/(4*math.pi*mesh.area)
+        return pow(self.perimeter, 2)/(4*math.pi*self.area)
 
     def get_bounding_box(self):
-        max_x, max_y = 0
-        min_x, min_y = sys.maxsize
+        max_x, max_y = 0, 0
+        min_x, min_y = sys.maxsize, sys.maxsize
         for x in range(len(self.pixels)):
             for y in range(len(self.pixels[0])):
                 if self.pixels[x][y] == 0:
@@ -79,10 +79,14 @@ class Mesh2D:
         # TODO fill
 
     def get_skeleton(self):
-        image = skimage.util.invert(self.pixels)
+        image = skimage.util.invert(self.pixels/255)
         return skimage.morphology.skeletonize(image)
 
     def get_skeleton_length(self):
-        return sum(1 for x in self.skeleton if x==255)
+        count = 0
+        for line in self.skeleton:
+            for pixel in line:
+                if pixel == 1: count += 1
+        return count
 
 

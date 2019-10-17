@@ -91,8 +91,8 @@ class Meshtype(base):
 
 # session.add(Meshtype(type="Ant", averagevertices=2000, averagepolygons=8000))
 
-q2 = session.query(Mesh).all()
+q2 = session.query(Meshtype.meshtype_id).filter(Meshtype.type=='Airplane').first()
 q = session.query(Mesh.mesh_id).join(Meshtype).filter(Meshtype.type == 'Airplane').all()
-print(q2)
+print(q2[0])
 # mesh = session.query(Mesh).filter(Mesh.meshtype_id in ).all()
 # print(mesh[0].mesh_id)

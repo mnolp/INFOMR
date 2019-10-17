@@ -57,7 +57,7 @@ class Mesh:
                 if vertex[i] < minValues[i]: minValues[i] = vertex[i]
                 if vertex[i] > maxValues[i]: maxValues[i] = vertex[i]
 
-        return (maxValues[0]-minValues[0], maxValues[1]-minValues[1], maxValues[2]-minValues[2])
+        self.boundingBoxDimensions = (maxValues[0]-minValues[0], maxValues[1]-minValues[1], maxValues[2]-minValues[2])
 
     '''
     This function scales the mesh to fit in the unary box (-0.5, 0.5)
@@ -72,7 +72,8 @@ class Mesh:
     This method dump the mesh to file in .off format
     '''
     def toFile(self):
-        with open(self.filename[: self.filename.rfind(".")]+"_processed"+self.filename[self.filename.rfind("."):], "w") as outf:
+        newfile = self.filename[: self.filename.rfind(".")]+"_processed"+self.filename[self.filename.rfind("."):]
+        with open(newfile, "w") as outf:
             outf.write("OFF\n")
             outf.write(str(self.numberOfVertices)+" "+str(self.numberOfFaces)+" 0\n")
             for vertex in self.vertices:
@@ -91,6 +92,8 @@ class Mesh:
                 for v in face:
                     s += " "+str(v)
                 outf.write(s+"\n")
+
+        return newfile
 
 
     '''
@@ -153,8 +156,6 @@ class Mesh:
         A_cov = np.cov(A)  # 3x3 matrix
 
         eigenvalues, eigenvectors = np.linalg.eig(A_cov)
-        print(eigenvectors)
-        print(eigenvalues)
         self.eigenvalues = eigenvalues
         temp = eigenvalues.tolist()
         eigenvectors = eigenvectors.tolist()
@@ -165,21 +166,19 @@ class Mesh:
             eigenvectorssorted.append(eigenvectors[index])
             del eigenvectors[temp.index(max(temp))]
             temp.remove(max(temp))
-        print(eigenvectorssorted)
         # self.old_eignvectors = self.eigenvectors
-        return eigenvectorssorted
+
+        self.eigenvectors = eigenvectorssorted
 
     '''
     This function change our reference system in accord to the eigen vectors found
     '''
     def changingBase(self):
-        print(self.vertices[0])
+        temp_eigen = np.linalg.inv(np.array([self.eigenvectors[0], self.eigenvectors[1], self.eigenvectors[2]]))
         for i in range(len(self.vertices)):
             if not self.vertices[i] == -1:
-                # temp = np.dot(self.eigenvectors, self.vertices[i])
-                temp = np.dot(self.vertices[i], self.eigenvectors)
+                temp = temp_eigen.dot(self.vertices[i])
                 self.vertices[i] = [temp[0], temp[1], temp[2]]
-        print(self.vertices[0])
         self.eigen()
 
     '''
