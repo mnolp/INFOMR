@@ -22,13 +22,9 @@ class Mesh:
         self.filename = filename
         self.numberOfVertices = len(vertices)
         self.numberOfFaces = len(faces)
-        self.setMeshToCenter()
-        # self.boundingBoxDimensions = self.setBoundingBox()
-        self.eigenvectors = self.eigen()
+        self.eigenvectors = []
         self.eigenvalues = []
-        self.changingBase()
-        self.boundingBoxDimensions = self.setBoundingBox()
-        self.normalizeMesh()
+        self.boundingBoxDimensions = []
         # self.old_eignvectors = []
         # self.mesh2d = Mesh2D.Mesh2D(self.toimage())
 
@@ -49,7 +45,10 @@ class Mesh:
             for j in range(3):
                 self.vertices[i][j] -= sumValues[j]
 
-
+    '''
+    This method find the bounding box of the mesh
+    Run first eigen() and changingBase() to find oriented bounding box
+    '''
     def setBoundingBox(self):
         minValues, maxValues = [sys.maxsize]*3, [0]*3
 
@@ -60,14 +59,18 @@ class Mesh:
 
         return (maxValues[0]-minValues[0], maxValues[1]-minValues[1], maxValues[2]-minValues[2])
 
-
+    '''
+    This function scales the mesh to fit in the unary box (-0.5, 0.5)
+    '''
     def normalizeMesh(self):
         for i in range(len(self.vertices)):
             for j in range(3):
                 self.vertices[i][j] /= max(self.boundingBoxDimensions)
         self.setBoundingBox()
 
-
+    '''
+    This method dump the mesh to file in .off format
+    '''
     def toFile(self):
         with open(self.filename[: self.filename.rfind(".")]+"_processed"+self.filename[self.filename.rfind("."):], "w") as outf:
             outf.write("OFF\n")
@@ -89,6 +92,10 @@ class Mesh:
                     s += " "+str(v)
                 outf.write(s+"\n")
 
+
+    '''
+    Reduce the amount of polygons in the mesh
+    '''
     def meshCrasher(self):
         edgesLength = []
         checkedvertices = []
@@ -135,7 +142,8 @@ class Mesh:
         self.numberOfFaces = len(self.faces)
         self.numberOfVertices = len(self.vertices)
 
-
+    '''
+    This function finds and sort by dimension the eigen vectors'''
     def eigen(self):
         A = np.zeros((3, len(self.vertices)))
         for i in range(3):
@@ -161,8 +169,9 @@ class Mesh:
         # self.old_eignvectors = self.eigenvectors
         return eigenvectorssorted
 
-
-
+    '''
+    This function change our reference system in accord to the eigen vectors found
+    '''
     def changingBase(self):
         print(self.vertices[0])
         for i in range(len(self.vertices)):
@@ -173,7 +182,10 @@ class Mesh:
         print(self.vertices[0])
         self.eigen()
 
-
+    '''
+    This function checks if the mesh is correctly oriented.
+    If not the mesh is flipped.
+    '''
     def flipTest(self):
         sumpos = [0, 0, 0]
         sumneg = [0, 0, 0]
@@ -196,7 +208,9 @@ class Mesh:
             if flag[2]:
                 vertices[i][2] = - vertices[i][2]
 
-
+    '''
+    This function save to .png file the silhouette of the mesh
+    '''
     def toimage(self):
         width = 600
         height = 600
