@@ -1,8 +1,9 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func
 from sqlalchemy import Column, String, Integer, Float, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, composite
 from sqlalchemy.types import ARRAY
+import sys
 
 db = create_engine("postgres://Tiziano:Tnatali93@localhost/infomr")
 base = declarative_base()
@@ -41,13 +42,14 @@ class Mesh(base):
     mesh_id = Column(Integer, primary_key=True)
     meshtype_id = Column(Integer, ForeignKey("meshtypes.meshtype_id"))
     filename = Column(String(50))
-    area2D = Column(Integer)
+    area2D = Column(Float)
     compactness2D = Column(Float)
     rectangularity2D = Column(Float)
     diameter2D = Column(Float)
     eccentricity2D = Column(Float)
-    perimeter2D = Column(Integer)
+    perimeter2D = Column(Float)
     skeletonToPerimeterRatio2D = Column(Float)
+    bbox_area = Column(Float)
     eigenvectors = relationship('Eigenvector')
     vertices = relationship('Vertex')
 
@@ -91,8 +93,38 @@ class Meshtype(base):
 
 # session.add(Meshtype(type="Ant", averagevertices=2000, averagepolygons=8000))
 
-q2 = session.query(Meshtype.meshtype_id).filter(Meshtype.type=='Airplane').first()
-q = session.query(Mesh.mesh_id).join(Meshtype).filter(Meshtype.type == 'Airplane').all()
-print(q2[0])
-# mesh = session.query(Mesh).filter(Mesh.meshtype_id in ).all()
-# print(mesh[0].mesh_id)
+# area
+# area_avg = session.query(func.avg(Mesh.area2D)).scalar()
+# area_stddev = session.query(func.stddev_samp(Mesh.area2D)).scalar()
+# # compactness
+# compactness2D = session.query(func.avg(Mesh.compactness2D)).scalar()
+# compactness2D = session.query(func.stddev_samp(Mesh.compactness2D)).scalar()
+# # rectangularity
+# rctn_avg = session.query(func.avg(Mesh.rectangularity2D)).scalar()
+# rctn_stddev = session.query(func.stddev_samp(Mesh.rectangularity2D)).scalar()
+# # diameter
+# dmtr_avg = session.query(func.avg(Mesh.diameter2D)).scalar()
+# dmtr_stddev = session.query(func.stddev_samp(Mesh.diameter2D)).scalar()
+# # eccentricity
+# eccn_avg = session.query(func.avg(Mesh.eccentricity2D)).scalar()
+# eccn_stddev = session.query(func.stddev_samp(Mesh.eccentricity2D)).scalar()
+# # perimeter
+# prmtr_avg = session.query(func.avg(Mesh.perimeter2D)).scalar()
+# prmtr_stddev = session.query(func.stddev_samp(Mesh.perimeter2D)).scalar()
+# # skeleton to perimeter ratio
+# sktprt_avg = session.query(func.avg(Mesh.skeletonToPerimeterRatio2D)).scalar()
+# sktprt_stddev = session.query(func.stddev_samp(Mesh.skeletonToPerimeterRatio2D)).scalar()
+#
+# meshes = session.query(Mesh).all()
+#
+# for i in range(len(meshes)):
+#     meshes[i].area2D = (meshes[i].area2D-area_avg)/area_stddev
+#     meshes[i].compactness2D = (meshes[i].compactness2D - compactness2D) / compactness2D
+#     meshes[i].rectangularity2D = (meshes[i].rectangularity2D - rctn_avg) / rctn_stddev
+#     meshes[i].diameter2D = (meshes[i].diameter2D - dmtr_avg) / dmtr_stddev
+#     meshes[i].eccentricity2D = (meshes[i].eccentricity2D - eccn_avg) / eccn_stddev
+#     meshes[i].perimeter2D = (meshes[i].perimeter2D - prmtr_avg) / prmtr_stddev
+#     meshes[i].skeletonToPerimeterRatio2D = (meshes[i].skeletonToPerimeterRatio2D - sktprt_avg) / sktprt_stddev
+# session.commit()
+
+# print("Average: {},\nStandard deviation: {}".format(area_avg, area_stddev))

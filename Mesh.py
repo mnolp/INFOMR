@@ -146,7 +146,8 @@ class Mesh:
         self.numberOfVertices = len(self.vertices)
 
     '''
-    This function finds and sort by dimension the eigen vectors'''
+    This function finds and sort by dimension the eigen vectors
+    '''
     def eigen(self):
         A = np.zeros((3, len(self.vertices)))
         for i in range(3):
@@ -156,7 +157,6 @@ class Mesh:
         A_cov = np.cov(A)  # 3x3 matrix
 
         eigenvalues, eigenvectors = np.linalg.eig(A_cov)
-        self.eigenvalues = eigenvalues
         temp = eigenvalues.tolist()
         eigenvectors = eigenvectors.tolist()
         eigenvectorssorted = []
@@ -168,16 +168,20 @@ class Mesh:
             temp.remove(max(temp))
         # self.old_eignvectors = self.eigenvectors
 
+        eigenvalues.sort()
+        self.eigenvalues = eigenvalues
         self.eigenvectors = eigenvectorssorted
 
     '''
     This function change our reference system in accord to the eigen vectors found
     '''
     def changingBase(self):
-        temp_eigen = np.linalg.inv(np.array([self.eigenvectors[0], self.eigenvectors[1], self.eigenvectors[2]]))
+        temp_eigen = np.array([self.eigenvectors[0], self.eigenvectors[1], self.eigenvectors[2]]).T
+        # temp_eigen = np.linalg.inv(np.array([self.eigenvectors[0], self.eigenvectors[1], self.eigenvectors[2]]))
         for i in range(len(self.vertices)):
             if not self.vertices[i] == -1:
-                temp = temp_eigen.dot(self.vertices[i])
+                # temp = temp_eigen.dot(self.vertices[i])
+                temp = np.linalg.solve(temp_eigen, self.vertices[i])
                 self.vertices[i] = [temp[0], temp[1], temp[2]]
         self.eigen()
 
@@ -238,7 +242,7 @@ class Mesh:
             self.eigenvectors[z_vec][0], self.eigenvectors[z_vec][1], self.eigenvectors[z_vec][2],              # eye position
             # 0, 0, 0,
             0, 0, 0,                                                                                # focus point
-            0, 1, 0                                                                                 # up vector
+            self.eigenvectors[1][0], self.eigenvectors[1][1], self.eigenvectors[1][2]                                                                                 # up vector
         )
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -257,18 +261,14 @@ class Mesh:
             for vertex in face:
                 glVertex3fv(self.vertices[vertex])
         glEnd()
-        glBegin(GL_LINES)
-        # draw line for x axis
-        glColor3f(1.0, 0.0, 0.0)
-        glVertex3f(0, 0, 0)
-        glVertex3fv(self.eigenvectors[0])
-        glColor3f(0.0, 1.0, 0.0)
-        glVertex3f(0, 0, 0)
-        glVertex3fv(self.eigenvectors[1])
-        glColor3f(0.0, 0.0, 1.0)
-        glVertex3f(0, 0, 0)
-        glVertex3fv(self.eigenvectors[2])
-        glEnd()
+        # glBegin(GL_LINES)
+        # glColor3f(1.0, 0.0, 0.0)
+        # glVertex3f(0, 0, 0)
+        # glVertex3fv(self.eigenvectors[0])
+        # glColor3f(0.0, 1.0, 0.0)
+        # glVertex3f(0, 0, 0)
+        # glVertex3fv(self.eigenvectors[1])
+        # glEnd()
         glFlush()
 
 
