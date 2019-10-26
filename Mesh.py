@@ -168,7 +168,7 @@ class Mesh:
             temp.remove(max(temp))
         # self.old_eignvectors = self.eigenvectors
 
-        eigenvalues.sort()
+        eigenvalues = sorted(eigenvalues, reverse=True)
         self.eigenvalues = eigenvalues
         self.eigenvectors = eigenvectorssorted
 
@@ -239,10 +239,9 @@ class Mesh:
             if abs(self.eigenvectors[i][2])>z: z_vec = i
 
         gluLookAt(
-            self.eigenvectors[z_vec][0], self.eigenvectors[z_vec][1], self.eigenvectors[z_vec][2],              # eye position
-            # 0, 0, 0,
-            0, 0, 0,                                                                                # focus point
-            self.eigenvectors[1][0], self.eigenvectors[1][1], self.eigenvectors[1][2]                                                                                 # up vector
+            self.eigenvectors[z_vec][0], self.eigenvectors[z_vec][1], self.eigenvectors[z_vec][2],        # eye position
+            0, 0, 0,                                                                                      # focus point
+            -self.eigenvectors[1][0], -self.eigenvectors[1][1], -self.eigenvectors[1][2]                                                                                 # up vector
         )
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -261,14 +260,14 @@ class Mesh:
             for vertex in face:
                 glVertex3fv(self.vertices[vertex])
         glEnd()
-        # glBegin(GL_LINES)
-        # glColor3f(1.0, 0.0, 0.0)
-        # glVertex3f(0, 0, 0)
-        # glVertex3fv(self.eigenvectors[0])
-        # glColor3f(0.0, 1.0, 0.0)
-        # glVertex3f(0, 0, 0)
-        # glVertex3fv(self.eigenvectors[1])
-        # glEnd()
+        glBegin(GL_LINES)
+        glColor3f(1.0, 0.0, 0.0)
+        glVertex3f(0, 0, 0)
+        glVertex3fv(self.eigenvectors[0])
+        glColor3f(0.0, 1.0, 0.0)
+        glVertex3f(0, 0, 0)
+        glVertex3fv(self.eigenvectors[1])
+        glEnd()
         glFlush()
 
 

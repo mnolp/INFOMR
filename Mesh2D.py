@@ -15,27 +15,33 @@ class Mesh2D:
         self.pixels = cv2.cvtColor(self.pixels, cv2.COLOR_BGR2GRAY)
         _, self.pixels= cv2.threshold(self.pixels, 127, 255, 0)
         self.flip_test()
-        thread_area = threading.Thread(target=threading_area)
+        thread_area = threading.Thread(target=self.threading_area)
         thread_area.start()
-        self.area = self.get_area()
-        thread_perimeter = threading.Thread(target=threading_perimeter)
+        self.area = 0
+        self.bounding_box = ()
+        self.perimeter_pixels = []
+        self.diameter = 0
+        # self.area = self.get_area()
+        thread_perimeter = threading.Thread(target=self.threading_perimeter)
         thread_perimeter.start()
-        self.perimeter_pixels = self.get_perimeter()
-        self.perimeter = len(self.perimeter_pixels)
+        # self.perimeter_pixels = self.get_perimeter()
         thread_perimeter.join()
-        thread_bbox = threading.Thread(target=threading_bbox)
+        thread_bbox = threading.Thread(target=self.threading_bbox)
         thread_bbox.start()
-        self.bounding_box = self.get_bounding_box()
-        self.rectangularity = self.get_rectangularity()
-        self.compactness = self.get_compactness()
-        thread_diameter = threading.Thread(target=threading_diameter)
-        thread_area.start()
-        self.diameter = self.get_diameter()
-        self.skeleton = self.get_skeleton()
-        self.skeleton_length = self.get_skeleton_length()
+        # self.bounding_box = self.get_bounding_box()
+        thread_diameter = threading.Thread(target=self.threading_diameter)
+        thread_diameter.start()
+        # self.diameter = self.get_diameter()
         thread_area.join()
         thread_bbox.join()
         thread_diameter.join()
+        self.perimeter = len(self.perimeter_pixels)
+        self.skeleton = self.get_skeleton()
+        self.skeleton_length = self.get_skeleton_length()
+        self.rectangularity = self.get_rectangularity()
+        self.compactness = self.get_compactness()
+
+
 
     # def __init__(self, filepath):
     #     self.filepath = filepath
@@ -48,6 +54,18 @@ class Mesh2D:
     #     self.diameter = self.get_diameter()
     #     self.skeleton = self.get_skeleton()
     #     self.skeleton_length = self.get_skeleton_length()
+
+    def threading_area(self):
+        self.area = np.count_nonzero(skimage.util.invert(self.pixels))
+
+    def threading_perimeter(self):
+        self.perimeter_pixels = self.get_perimeter()
+
+    def threading_bbox(self):
+        self.bounding_box = self.get_bounding_box()
+
+    def threading_diameter(self):
+        self.diameter = self.get_diameter()
 
     def flip_test(self):
         x_count, y_count = 0, 0

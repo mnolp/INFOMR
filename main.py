@@ -18,7 +18,7 @@ def getofffiles(path):
     return files
 
 
-def add_mesh(filepath, m2D):
+def add_mesh(filepath, m, m2D):
     db_c.session.add(db_c.Mesh(
         filename=filepath,
         meshtype_id=db_c.session.query(db_c.Meshtype.meshtype_id).filter(
@@ -32,6 +32,7 @@ def add_mesh(filepath, m2D):
         eccentricity2D=m.eigenvalues[0] / m.eigenvalues[1],
         perimeter2D=m2D.perimeter,
         skeletonToPerimeterRatio2D=m2D.skeleton_length / m2D.perimeter,
+        bbox_area=abs(m2D.bounding_box[0]*m2D.bounding_box[1])
     ))
     db_c.session.commit()
 
@@ -73,10 +74,47 @@ def standardise_database():
         mesh.skeletonToPerimeterRatio2D = (mesh.skeletonToPerimeterRatio2D - skeletonToPerimeterRatio_avg) / skeletonToPerimeterRatio_stddev
         mesh.bbox_area = (mesh.bbox_area-bbox_area_avg)/bbox_area_stddev
 
+
+def matching(filepath):
+    m2D = db_c.session.query(db_c.Mesh).filter(db_c.Mesh.filename==filepath).first()
+    meshes = db_c.session.query(db_c.Mesh).all()
+
+    distances = []
+    files = []
+    for i, mesh in enumerate(meshes):
+
+        u = [mesh.area2D,
+             mesh.perimeter2D,
+             mesh.rectangularity2D,
+             mesh.diameter2D,
+             mesh.skeletonToPerimeterRatio2D,
+             mesh.eccentricity2D,
+             mesh.compactness2D]
+
+        v = [m2D.area2D,
+             m2D.perimeter2D,
+             m2D.rectangularity2D,
+             m2D.diameter2D,
+             m2D.skeletonToPerimeterRatio2D,
+             m2D.eccentricity2D,
+             m2D.compactness2D]
+
+        distances.append(distance.euclidean(u, v))
+        files.append(mesh.filename)
+
+    for i in range(10):
+        max_dist = distances.index(min(distances))
+        print ("File: {}, Distance: {}".format(files[max_dist], distances[max_dist]))
+
+        del distances[max_dist]
+        del files[max_dist]
+
+
+
 def main():
     start_time = time.time()
-    files = getofffiles("dataset")
-    # files = ["dataset/Airplane/61.off"]
+    # files = getofffiles("dataset")
+    files = ["dataset/Airplane/78.off"]
 
     for n, filepath in enumerate(files, 1):
         print ("Number {} out of {}, file: {}".format(n, len(files), filepath))
@@ -84,87 +122,20 @@ def main():
             shape, vertexes, faces = meshTools.read_off(f)
         m = Mesh.Mesh(filepath, vertexes, faces)
         m.setMeshToCenter()
+        m.setBoundingBox()
+        m.normalizeMesh()
         m.eigen()
         m.changingBase()
         # m.flipTest()
         m.setBoundingBox()
         m.normalizeMesh()
         processed_file = m.toFile()
-        filepath2D = m.toimage()
+        # filepath2D = m.toimage()
 
-        m2D = Mesh2D.Mesh2D(filepath2D)
+        meshTools.meshRenderer(filepath, m.eigenvectors)
 
-        db_c.session.add(db_c.Mesh(
-            filename=filepath,
-            meshtype_id=db_c.session.query(db_c.Meshtype.meshtype_id).filter(
-                db_c.Meshtype.type == filepath[
-                                      filepath[:filepath.rfind('/')].rfind('/') + 1: filepath.rfind('/')]).first()[
-                0],
-            area2D=m2D.area,
-            compactness2D=m2D.compactness,
-            rectangularity2D=m2D.rectangularity,
-            diameter2D=m2D.diameter,
-            eccentricity2D=m.eigenvalues[0] / m.eigenvalues[1],
-            perimeter2D=m2D.perimeter,
-            skeletonToPerimeterRatio2D=m2D.skeleton_length / m2D.perimeter,
-            bbox_area=abs(m2D.bounding_box[0]*m2D.bounding_box[1])
-        ))
-        db_c.session.commit()
+    print("Elapsed time: {}".format(time.time()-start_time))
 
-    # standardise_database()
-
-
-    # m2D = db_c.session.query(db_c.Mesh).filter(db_c.Mesh.filename==filepath).first()
-    # meshes = db_c.session.query(db_c.Mesh).all()
-    #
-    # distances = []
-    # files = []
-    # for i, mesh in enumerate(meshes):
-    #
-    #     u = [mesh.area2D,
-    #          mesh.perimeter2D,
-    #          mesh.rectangularity2D,
-    #          mesh.diameter2D,
-    #          mesh.skeletonToPerimeterRatio2D,
-    #          mesh.eccentricity2D,
-    #          mesh.compactness2D]
-    #
-    #     v = [m2D.area2D,
-    #          m2D.perimeter2D,
-    #          m2D.rectangularity2D,
-    #          m2D.diameter2D,
-    #          m2D.skeletonToPerimeterRatio2D,
-    #          m2D.eccentricity2D,
-    #          m2D.compactness2D]
-    #
-    #     distances.append(distance.euclidean(u, v))
-    #     files.append(mesh.filename)
-    #
-    # for i in range(10):
-    #     max_dist = distances.index(min(distances))
-    #     print ("File: {}, Distance: {}".format(files[max_dist], distances[max_dist]))
-    #
-    #     del distances[max_dist]
-    #     del files[max_dist]
-    #
-    # print("Elapsed time: {}".format(time.time()-start_time))
-    #
-
-
-
-    # area, perimeter = feature_extraction.get_area_perimeter("dataset/Airplane/62_silhouette.png")
-    # print ("Area: {}\nPerimeter: {}".format(area, perimeter))
-
-    # meshTools.meshRenderer("dataset/Airplane/62_processed.off", m.eigenvectors)
-
-    # a, b = databaseTools.claReader("benchmark/classification/v1/base/train.cla")
-    # with open("out.txt", "w") as f:
-    #     for i in range(1815):
-    #         label = databaseTools.assignModelToClass(a, b, str(i))
-    #         if label != None:
-    #             f.write(str(i)+" "+label+"\n")
-    # databaseTools.data_analysis()
-    # meshTools.meshReducer("dataset/Airplane/61.off")
 
 
 if __name__ == "__main__":

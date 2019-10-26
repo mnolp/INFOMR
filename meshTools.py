@@ -82,6 +82,18 @@ def mesh_reconstructor(file):
             glNormal3fv(triangleNormal(verticies, face))
             glVertex3fv(v)
     glEnd()
+    glEnable(GL_COLOR_MATERIAL)
+    glBegin(GL_LINES)
+    glColor3f(1, 0, 0)
+    glVertex3f(0, 0, 0)
+    glVertex3fv(eigenVectors[0])
+    glColor3f(0, 1, 0)
+    glVertex3f(0, 0, 0)
+    glVertex3fv(eigenVectors[1])
+    glColor3f(0, 0, 1)
+    glVertex3f(0, 0, 0)
+    glVertex3fv(eigenVectors[2])
+    glEnd()
 
 def triangleNormal(vertices, face):
     ux = vertices[face[1]][0] - vertices[face[0]][0]
@@ -94,7 +106,7 @@ def triangleNormal(vertices, face):
     x = (uy*vz)-(uz-vy)
     y = (uz*vx)-(ux-vz)
     z = (ux*vy)-(uy-vx)
-
+    
     xf = x / math.sqrt(pow(x,2) + pow(y, 2) + pow(z, 2))
     yf = y / math.sqrt(pow(x,2) + pow(y, 2) + pow(z, 2))
     zf = z / math.sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2))
