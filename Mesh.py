@@ -6,6 +6,7 @@ from PIL import Image
 import cv2, math
 import glfw
 import Mesh2D
+from meshTools import triangleNormal
 
 # DISPLAY_WIDTH = 2000
 # DISPLAY_HEIGHT = 2000
@@ -149,14 +150,17 @@ class Mesh:
     This function finds and sort by dimension the eigen vectors
     '''
     def eigen(self):
-        A = np.zeros((3, len(self.vertices)))
-        for i in range(3):
-            for j in range(len(self.vertices)):
-                A[i][j] = self.vertices[j][i]
+
+        # for i in range(3):
+        #     for j in range(len(self.vertices)):
+        #         A[i][j] = self.vertices[j][i]
+        A = np.asarray(self.vertices).T
+
 
         A_cov = np.cov(A)  # 3x3 matrix
 
         eigenvalues, eigenvectors = np.linalg.eig(A_cov)
+        eigenvectors = np.transpose(eigenvectors)
         temp = eigenvalues.tolist()
         eigenvectors = eigenvectors.tolist()
         eigenvectorssorted = []
@@ -165,23 +169,26 @@ class Mesh:
             index = temp.index(max(temp))
             eigenvectorssorted.append(eigenvectors[index])
             del eigenvectors[temp.index(max(temp))]
-            temp.remove(max(temp))
+            del temp[temp.index(max(temp))]
         # self.old_eignvectors = self.eigenvectors
 
-        eigenvalues = sorted(eigenvalues, reverse=True)
-        self.eigenvalues = eigenvalues
+        self.eigenvalues = sorted(eigenvalues, reverse=True)
+        # self.eigenvalues = eigenvalues
         self.eigenvectors = eigenvectorssorted
+
+
 
     '''
     This function change our reference system in accord to the eigen vectors found
     '''
     def changingBase(self):
-        temp_eigen = np.array([self.eigenvectors[0], self.eigenvectors[1], self.eigenvectors[2]]).T
+        # temp_eigen = np.array([self.eigenvectors[0], self.eigenvectors[1], self.eigenvectors[2]]).T
         # temp_eigen = np.linalg.inv(np.array([self.eigenvectors[0], self.eigenvectors[1], self.eigenvectors[2]]))
         for i in range(len(self.vertices)):
             if not self.vertices[i] == -1:
                 # temp = temp_eigen.dot(self.vertices[i])
-                temp = np.linalg.solve(temp_eigen, self.vertices[i])
+                # temp = np.linalg.solve(temp_eigen, self.vertices[i])
+                temp = np.dot(self.vertices[i], np.linalg.inv(self.eigenvectors))
                 self.vertices[i] = [temp[0], temp[1], temp[2]]
         self.eigen()
 
@@ -233,17 +240,21 @@ class Mesh:
         glDisable(GL_LIGHTING)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        z_vec = 0
-        z = 0
+
+        z_vec, z = 0, 0
+        y_vec, y = 0, 0
         for i in range(len(self.eigenvectors)):
-            if abs(self.eigenvectors[i][2])>z: z_vec = i
+            if abs(self.eigenvectors[i][2]) > z: z_vec = i
+            if abs(self.eigenvectors[i][1]) > y: y_vec = i
 
         gluLookAt(
-            self.eigenvectors[z_vec][0], self.eigenvectors[z_vec][1], self.eigenvectors[z_vec][2],        # eye position
+            abs(self.eigenvectors[z_vec][0]), abs(self.eigenvectors[z_vec][1]), abs(self.eigenvectors[z_vec][2]),        # eye position
             0, 0, 0,                                                                                      # focus point
-            -self.eigenvectors[1][0], -self.eigenvectors[1][1], -self.eigenvectors[1][2]                                                                                 # up vector
+            -abs(self.eigenvectors[1][0]), -abs(self.eigenvectors[1][1]), -abs(self.eigenvectors[1][2])                                                                                 # up vector
         )
-
+        # gluLookAt(0, 0, 2,
+        #           0, 0, 0,
+        #           -1, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         glMatrixMode(GL_PROJECTION)
@@ -251,23 +262,36 @@ class Mesh:
         glOrtho(-1, 1, -1, 1, -5, 5)
 
         glMatrixMode(GL_MODELVIEW)
+        # glShadeModel(GL_FLAT)
+        # #
+        # glEnable(GL_LIGHTING)
+        # glEnable(GL_LIGHT0)
+        # #
+        # glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
 
         glEnable(GL_COLOR_MATERIAL)
+        # glColor3f(0.4, 0.4, 0.4)
         glColor3f(0, 0, 0)
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
         glBegin(GL_TRIANGLES)
         for face in self.faces:
             for vertex in face:
+                # glNormal3fv(triangleNormal(self.vertices, face))
                 glVertex3fv(self.vertices[vertex])
+
         glEnd()
-        glBegin(GL_LINES)
-        glColor3f(1.0, 0.0, 0.0)
-        glVertex3f(0, 0, 0)
-        glVertex3fv(self.eigenvectors[0])
-        glColor3f(0.0, 1.0, 0.0)
-        glVertex3f(0, 0, 0)
-        glVertex3fv(self.eigenvectors[1])
-        glEnd()
+        # glBegin(GL_LINES)
+        # glColor3f(1.0, 0.0, 0.0)
+        # glVertex3f(0, 0, 0)
+        # glVertex3f(abs(self.eigenvectors[0][0]),
+        #            abs(self.eigenvectors[0][1]),
+        #            abs(self.eigenvectors[0][2]))
+        # glColor3f(0.0, 1.0, 0.0)
+        # glVertex3f(0, 0, 0)
+        # glVertex3f(abs(self.eigenvectors[1][0]),
+        #            abs(self.eigenvectors[1][1]),
+        #            abs(self.eigenvectors[1][2]))
+        # glEnd()
         glFlush()
 
 

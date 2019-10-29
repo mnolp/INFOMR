@@ -6,6 +6,7 @@ import database_classes as db_c
 from sqlalchemy import func
 import time
 from scipy.spatial import distance
+from scipy.stats import wasserstein_distance
 
 
 def getofffiles(path):
@@ -13,6 +14,15 @@ def getofffiles(path):
     for r, d, f in os.walk(path):
         for file in f:
             if file.endswith('.off') and not file.endswith('_processed.off'):
+                files.append(os.path.join(r, file))
+
+    return files
+
+def getpngfiles(path):
+    files = []
+    for r, d, f in os.walk(path):
+        for file in f:
+            if file.endswith('.png'):
                 files.append(os.path.join(r, file))
 
     return files
@@ -36,7 +46,27 @@ def add_mesh(filepath, m, m2D):
     ))
     db_c.session.commit()
 
-def standardise_database():
+def update_mesh(filepath, m):
+    m2D = Mesh2D.Mesh2D(
+        filepath[: filepath.rfind('/')] + filepath[filepath.rfind('/'): filepath.rfind('.')] + "_silhouette.png")
+
+    q = db_c.session.query(db_c.Mesh).filter(db_c.Mesh.filename == filepath).first()
+    q.area2D = m2D.area
+    q.compactness2D = m2D.compactness
+    q.rectangularity2D = m2D.rectangularity
+    q.diameter2D = m2D.diameter
+    q.eccentricity2D = m.eigenvalues[0] / m.eigenvalues[1]
+    q.perimeter2D = m2D.perimeter
+    q.skeletonToPerimeterRatio2D = m2D.skeleton_length / m2D.perimeter
+    q.bbox_area = float(m2D.bounding_box[0] * m2D.bounding_box[1])
+
+    db_c.session.commit()
+
+
+
+
+
+def matching_std(filepath):
     # area
     area_avg = db_c.session.query(func.avg(db_c.Mesh.area2D)).scalar()
     area_stddev = db_c.session.query(func.stddev(db_c.Mesh.area2D)).scalar()
@@ -62,20 +92,6 @@ def standardise_database():
     bbox_area_avg = db_c.session.query(func.avg(db_c.Mesh.bbox_area)).scalar()
     bbox_area_stddev = db_c.session.query(func.stddev(db_c.Mesh.bbox_area)).scalar()
 
-
-    meshes = db_c.session.query(db_c.Mesh).all()
-    for mesh in meshes:
-        mesh.area2D = (mesh.area2D-area_avg)/area_stddev
-        mesh.perimeter2D = (mesh.perimeter2D - perimeter_avg) / perimeter_stddev
-        mesh.eccentricity2D = (mesh.eccentricity2D - eccentricity_avg) / eccentricity_stddev
-        mesh.compactness2D = (mesh.compactness2D - compactness_avg) / compactness_stddev
-        mesh.rectangularity2D = (mesh.rectangularity2D - rectangularity_avg) / rectangularity_stddev
-        mesh.diameter2D = (mesh.diameter2D - diameter_avg) / diameter_stddev
-        mesh.skeletonToPerimeterRatio2D = (mesh.skeletonToPerimeterRatio2D - skeletonToPerimeterRatio_avg) / skeletonToPerimeterRatio_stddev
-        mesh.bbox_area = (mesh.bbox_area-bbox_area_avg)/bbox_area_stddev
-
-
-def matching(filepath):
     m2D = db_c.session.query(db_c.Mesh).filter(db_c.Mesh.filename==filepath).first()
     meshes = db_c.session.query(db_c.Mesh).all()
 
@@ -83,26 +99,26 @@ def matching(filepath):
     files = []
     for i, mesh in enumerate(meshes):
 
-        u = [mesh.area2D,
-             mesh.perimeter2D,
-             mesh.rectangularity2D,
-             mesh.diameter2D,
-             mesh.skeletonToPerimeterRatio2D,
-             mesh.eccentricity2D,
-             mesh.compactness2D]
+        u = [(mesh.area2D-area_avg)/area_stddev,
+             (mesh.perimeter2D-perimeter_avg)/perimeter_stddev,
+             (mesh.rectangularity2D-rectangularity_avg)/rectangularity_stddev,
+             (mesh.diameter2D-diameter_avg)/diameter_stddev,
+             (mesh.skeletonToPerimeterRatio2D-skeletonToPerimeterRatio_avg)/skeletonToPerimeterRatio_stddev,
+             (mesh.eccentricity2D-eccentricity_avg)/eccentricity_stddev,
+             (mesh.compactness2D-compactness_avg)/compactness_stddev]
 
-        v = [m2D.area2D,
-             m2D.perimeter2D,
-             m2D.rectangularity2D,
-             m2D.diameter2D,
-             m2D.skeletonToPerimeterRatio2D,
-             m2D.eccentricity2D,
-             m2D.compactness2D]
+        v = [(m2D.area2D-area_avg)/area_stddev,
+             (m2D.perimeter2D-perimeter_avg)/perimeter_stddev,
+             (m2D.rectangularity2D-rectangularity_avg)/rectangularity_stddev,
+             (m2D.diameter2D-diameter_avg)/diameter_stddev,
+             (m2D.skeletonToPerimeterRatio2D-skeletonToPerimeterRatio_avg)/skeletonToPerimeterRatio_stddev,
+             (m2D.eccentricity2D-eccentricity_avg)/eccentricity_stddev,
+             (m2D.compactness2D-compactness_avg)/compactness_stddev]
 
         distances.append(distance.euclidean(u, v))
         files.append(mesh.filename)
 
-    for i in range(10):
+    for i in range(30):
         max_dist = distances.index(min(distances))
         print ("File: {}, Distance: {}".format(files[max_dist], distances[max_dist]))
 
@@ -112,29 +128,36 @@ def matching(filepath):
 
 
 def main():
-    start_time = time.time()
-    # files = getofffiles("dataset")
-    files = ["dataset/Airplane/78.off"]
-
+    # files = getofffiles("dataset/")
+    files = ["dataset/Plier/201.off"]
+    #
     for n, filepath in enumerate(files, 1):
-        print ("Number {} out of {}, file: {}".format(n, len(files), filepath))
-        with open(filepath, "r") as f:
-            shape, vertexes, faces = meshTools.read_off(f)
-        m = Mesh.Mesh(filepath, vertexes, faces)
-        m.setMeshToCenter()
-        m.setBoundingBox()
-        m.normalizeMesh()
-        m.eigen()
-        m.changingBase()
+        start_time = time.time()
+
+        # print ("Number {} out of {}, file: {}".format(n, len(files), filepath))
+        # with open(filepath, "r") as f:
+        #     shape, vertexes, faces = meshTools.read_off(f)
+        # m = Mesh.Mesh(filepath, vertexes, faces)
+        # m.setMeshToCenter()
+        # m.eigen()
+        # m.changingBase()
+        # m.setBoundingBox()
+        # m.normalizeMesh()
         # m.flipTest()
-        m.setBoundingBox()
-        m.normalizeMesh()
-        processed_file = m.toFile()
+        # processed_file = m.toFile()
         # filepath2D = m.toimage()
+        # update_mesh(filepath, m)
 
-        meshTools.meshRenderer(filepath, m.eigenvectors)
+        # meshTools.meshRenderer(processed_file, m.eigenvectors)
+        matching_std(filepath)
+        print("Elapsed time: {}".format(time.time()-start_time))
 
-    print("Elapsed time: {}".format(time.time()-start_time))
+
+    # m2D2 = Mesh2D.Mesh2D("dataset/Airplane/80_silhouette.png")
+    #
+    # print(m2D1.area)
+    # print(m2D2.area)
+
 
 
 
