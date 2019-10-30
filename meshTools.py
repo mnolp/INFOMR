@@ -82,6 +82,27 @@ def mesh_reconstructor(file):
             glNormal3fv(triangleNormal(verticies, face))
             glVertex3fv(v)
     glEnd()
+    glEnable(GL_COLOR_MATERIAL)
+    glBegin(GL_LINES)
+    # glColor3f(1, 0, 0)
+    # glVertex3f(0, 0, 0)
+    # glVertex3f(1, 0, 0)
+    # glColor3f(0, 1, 0)
+    # glVertex3f(0, 0, 0)
+    # glVertex3f(0, 1, 0)
+    # glColor3f(0, 0, 1)
+    # glVertex3f(0, 0, 0)
+    # glVertex3f(0, 0, 1)
+    glColor3f(1, 0, 0)
+    glVertex3f(0, 0, 0)
+    glVertex3fv(eigenVectors[0])
+    glColor3f(0, 1, 0)
+    glVertex3f(0, 0, 0)
+    glVertex3fv(eigenVectors[1])
+    glColor3f(0, 0, 1)
+    glVertex3f(0, 0, 0)
+    glVertex3fv(eigenVectors[2])
+    glEnd()
 
 def triangleNormal(vertices, face):
     ux = vertices[face[1]][0] - vertices[face[0]][0]
@@ -91,13 +112,15 @@ def triangleNormal(vertices, face):
     vy = vertices[face[2]][1] - vertices[face[0]][1]
     vz = vertices[face[2]][2] - vertices[face[0]][2]
 
-    x = (uy*vz)-(uz-vy)
-    y = (uz*vx)-(ux-vz)
-    z = (ux*vy)-(uy-vx)
-
-    xf = x / math.sqrt(pow(x,2) + pow(y, 2) + pow(z, 2))
-    yf = y / math.sqrt(pow(x,2) + pow(y, 2) + pow(z, 2))
-    zf = z / math.sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2))
+    x = (uy*vz)-(uz*vy)
+    y = (uz*vx)-(ux*vz)
+    z = (ux*vy)-(uy*vx)
+    try:
+        xf = x / math.sqrt(x*x + y*y + z*z)
+        yf = y / math.sqrt(x*x + y*y + z*z)
+        zf = z / math.sqrt(x*x + y*y + z*z)
+    except(ZeroDivisionError):
+        print("Hello")
 
     return (xf, yf, zf)
 
@@ -160,11 +183,29 @@ def display():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     # Set up viewing transformation, looking down -Z axis
     glLoadIdentity()
-    gluLookAt(0, 0, 2.5, 0, 0, 0, -.1, 0, 0)  # -.1,0,0
+
+    # z_vec, z = 0, 0
+    # y_vec, y = 0, 0
+    # for i in range(len(eigenVectors)):
+    #     print("i: {}, z: {}, y: {}".format(i, eigenVectors[i][2], eigenVectors[i][1]))
+    #     if abs(eigenVectors[i][2]) > z: z_vec = i
+    #     if abs(eigenVectors[i][1]) > y: y_vec = i
+    # print("z_vec: {}, y_vec: {}".format(z_vec, y_vec))
+    # gluLookAt(eigenVectors[z_vec][0], eigenVectors[z_vec][1], eigenVectors[z_vec][2],
+    #           0, 0, 0,
+    #           eigenVectors[y_vec][0], eigenVectors[y_vec][1], eigenVectors[y_vec][2])  # -.1,0,0
+    gluLookAt(eigenVectors[2][0], eigenVectors[2][1], eigenVectors[2][2],
+              0, 0, 0,
+              eigenVectors[1][0], eigenVectors[1][1], eigenVectors[1][2])  # -.1,0,0
+    # gluLookAt(0, 0, 2,
+    #           0, 0, 0,
+    #           -1, 0, 0)
     # Set perspective (also zoom)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluPerspective(zoom, float(g_Width) / float(g_Height), g_nearPlane, g_farPlane)
+    # gluPerspective(zoom, float(g_Width) / float(g_Height), g_nearPlane, g_farPlane)
+    glOrtho(-1, 1, -1, 1, -5, 5)
+
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
     glMatrixMode(GL_MODELVIEW)
     # Render the scene

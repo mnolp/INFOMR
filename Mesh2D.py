@@ -3,6 +3,7 @@ import math
 import sys
 import skimage, skimage.morphology
 from skimage import measure
+from scipy.spatial import distance
 import numpy as np
 import threading
 
@@ -14,28 +15,15 @@ class Mesh2D:
         self.pixels = cv2.imread(filepath)
         self.pixels = cv2.cvtColor(self.pixels, cv2.COLOR_BGR2GRAY)
         _, self.pixels= cv2.threshold(self.pixels, 127, 255, 0)
-        self.flip_test()
-        thread_area = threading.Thread(target=threading_area)
-        thread_area.start()
         self.area = self.get_area()
-        thread_perimeter = threading.Thread(target=threading_perimeter)
-        thread_perimeter.start()
         self.perimeter_pixels = self.get_perimeter()
         self.perimeter = len(self.perimeter_pixels)
-        thread_perimeter.join()
-        thread_bbox = threading.Thread(target=threading_bbox)
-        thread_bbox.start()
         self.bounding_box = self.get_bounding_box()
+        self.diameter = self.get_diameter()
         self.rectangularity = self.get_rectangularity()
         self.compactness = self.get_compactness()
-        thread_diameter = threading.Thread(target=threading_diameter)
-        thread_area.start()
-        self.diameter = self.get_diameter()
         self.skeleton = self.get_skeleton()
-        self.skeleton_length = self.get_skeleton_length()
-        thread_area.join()
-        thread_bbox.join()
-        thread_diameter.join()
+        self.skeleton_length = self.get_other_skeleton_length()
 
     # def __init__(self, filepath):
     #     self.filepath = filepath
@@ -48,6 +36,18 @@ class Mesh2D:
     #     self.diameter = self.get_diameter()
     #     self.skeleton = self.get_skeleton()
     #     self.skeleton_length = self.get_skeleton_length()
+
+    def threading_area(self):
+        self.area = np.count_nonzero(skimage.util.invert(self.pixels))
+
+    def threading_perimeter(self):
+        self.perimeter_pixels = self.get_contour()
+
+    def threading_bbox(self):
+        self.bounding_box = self.get_bounding_box()
+
+    def threading_diameter(self):
+        self.diameter = self.get_diameter()
 
     def flip_test(self):
         x_count, y_count = 0, 0
@@ -69,7 +69,11 @@ class Mesh2D:
         neighbors = [[1, 0],
                      [0, 1],
                      [-1, 0],
-                     [0, -1]]
+                     [0, -1],
+                     [1, 1],
+                     [-1, -1],
+                     [1, -1],
+                     [-1, 1]]
         for x, line in enumerate(self.pixels):
             for y, pixel in enumerate(line):
                 if pixel == 0:
@@ -80,6 +84,12 @@ class Mesh2D:
                                 break
         return perimeter_pixels
 
+    def get_contour(self):
+        contours, hierarchy = cv2.findContours(self.pixels, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        ret_list = []
+        for pixel in contours[1]:
+            ret_list.append([pixel[0][0], pixel[0][1]])
+        return ret_list
 
     # def get_area(self):
     #     # img = cv2.imread(self.filepath)
@@ -128,4 +138,47 @@ class Mesh2D:
     def get_skeleton_length(self):
         return np.count_nonzero(self.skeleton)
 
+    def get_other_skeleton_length(self):
+        max_dist = 0
+        # skeleton_pixels = []
+        # for i, p1 in enumerate(self.skeleton):
+        #     for j, p2 in enumerate(p1):
+        #         if p2:
+        #             skeleton_pixels.append([i, j])
+        skeleton_pixels = np.transpose(np.nonzero(self.skeleton))
+        for p1 in skeleton_pixels:
+            for p2 in skeleton_pixels:
+                dist = (p1[0]-p2[0])*(p1[0]-p2[0]) + (p1[1]-p2[1])*(p1[1]-p2[1])
+                if dist > max_dist: max_dist = dist
 
+        return max_dist
+
+def main():
+    import database_classes as db
+    from main import getpngfiles
+
+
+    # files = getpngfiles('dataset')
+    m2D = Mesh2D('dataset/Airplane/80_silhouette.png')
+    img = np.zeros((1200, 1200), dtype=np.uint8)
+
+    for p in np.transpose(np.nonzero(m2D.skeleton)):
+        img[p[0]][p[1]] = 255
+    for p in m2D.perimeter_pixels:
+        img[p[0]][p[1]] = 255
+
+    cv2.imshow('image', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    # for file in files:
+    #     m2D = Mesh2D(file)
+    #     mesh = db.session.query(db.Mesh).filter(db.Mesh.filename==file[:file.index('_')]+".off").first()
+    #     mesh.skeletonToPerimeterRatio2D = m2D.skeleton_length
+    #
+    # db.session.commit()
+
+
+
+
+if __name__=="__main__":
+    main()
