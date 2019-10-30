@@ -94,6 +94,17 @@ class Meshtype(base):
     averagepolygons = Column(Integer)
     mesh = relationship("Mesh")
 
+
+class Distance(base):
+    __tablename__ = "distances"
+
+    mesh1_id = Column(Integer, ForeignKey('meshes.mesh_id'), primary_key=True)
+    mesh2_id = Column(Integer, ForeignKey('meshes.mesh_id'), primary_key=True)
+    mesh1 = relationship("Mesh", foreign_keys=[mesh1_id])
+    mesh2 = relationship("Mesh", foreign_keys=[mesh2_id])
+    value = Column(Float)
+
+
 # session.add(Meshtype(type="Ant", averagevertices=2000, averagepolygons=8000))
 
 
@@ -115,67 +126,16 @@ class Meshtype(base):
 
 
 def main():
-    m2D = session.query(Mesh).filter(Mesh.filename=='dataset/Armadillo/281.off').first()
-    meshes = session.query(Mesh).all()
+    distances = session.query(Distance).all()
 
-    distances = []
-    files = []
-    # area
-    area_avg = session.query(func.avg(Mesh.area2D)).scalar()
-    area_stddev = session.query(func.stddev_samp(Mesh.area2D)).scalar()
-    # compactness
-    compactness_avg = session.query(func.avg(Mesh.compactness2D)).scalar()
-    compactness_stddev = session.query(func.stddev_samp(Mesh.compactness2D)).scalar()
-    # rectangularity
-    rectangularity_avg = session.query(func.avg(Mesh.rectangularity2D)).scalar()
-    rectangularity_stddev = session.query(func.stddev_samp(Mesh.rectangularity2D)).scalar()
-    # diameter
-    diameter_avg = session.query(func.avg(Mesh.diameter2D)).scalar()
-    diameter_stddev = session.query(func.stddev_samp(Mesh.diameter2D)).scalar()
-    # eccentricity
-    eccentricity_avg = session.query(func.avg(Mesh.eccentricity2D)).scalar()
-    eccentricity_stddev = session.query(func.stddev_samp(Mesh.eccentricity2D)).scalar()
-    # perimeter
-    perimeter_avg = session.query(func.avg(Mesh.perimeter2D)).scalar()
-    perimeter_stddev = session.query(func.stddev_samp(Mesh.perimeter2D)).scalar()
-    # skeleton to perimeter ratio
-    skeletonToPerimeterRatio_avg = session.query(func.avg(Mesh.skeletonToPerimeterRatio2D)).scalar()
-    skeletonToPerimeterRatio_stddev = session.query(func.stddev_samp(Mesh.skeletonToPerimeterRatio2D)).scalar()
-    # bbox area
-    bbox_area_avg = session.query(func.avg(Mesh.bbox_area)).scalar()
-    bbox_area_stddev = session.query(func.stddev(Mesh.bbox_area)).scalar()
-
-    for i, mesh in enumerate(meshes):
-
-        u = [(mesh.area2D-area_avg)/area_stddev,
-             (mesh.perimeter2D-perimeter_avg)/perimeter_stddev,
-             (mesh.rectangularity2D-rectangularity_avg)/rectangularity_stddev,
-             (mesh.diameter2D-diameter_avg)/diameter_stddev,
-             (mesh.skeletonToPerimeterRatio2D-skeletonToPerimeterRatio_avg)/skeletonToPerimeterRatio_stddev,
-             (mesh.eccentricity2D-eccentricity_avg)/eccentricity_stddev,
-             (mesh.compactness2D-compactness_avg)/compactness_stddev,
-             (mesh.bbox_area-bbox_area_avg)/bbox_area_stddev]
-
-        v = [(m2D.area2D - area_avg) / area_stddev,
-             (m2D.perimeter2D - perimeter_avg) / perimeter_stddev,
-             (m2D.rectangularity2D - rectangularity_avg) / rectangularity_stddev,
-             (m2D.diameter2D - diameter_avg) / diameter_stddev,
-             (m2D.skeletonToPerimeterRatio2D - skeletonToPerimeterRatio_avg) / skeletonToPerimeterRatio_stddev,
-             (m2D.eccentricity2D - eccentricity_avg) / eccentricity_stddev,
-             (m2D.compactness2D - compactness_avg) / compactness_stddev,
-             (m2D.bbox_area - bbox_area_avg) / bbox_area_stddev]
-
-        distances.append(distance.euclidean(u, v))
-        files.append(mesh.filename)
-
-    for i in range(20):
-        max_dist = distances.index(min(distances))
-        print ("Distance: {}, File: {}".format(distances[max_dist], files[max_dist]))
-
-        del distances[max_dist]
-        del files[max_dist]
-
-    list_meshes = session.query(Mesh.filename).all()
+    checked = []
+    for i, distance in enumerate(distances):
+        print(i)
+        if not sorted([distance.mesh1_id, distance.mesh2_id]) in checked:
+            checked.append(sorted([distance.mesh1_id, distance.mesh2_id]))
+        else:
+            session.query(Distance).filter(Distance.mesh1_id==distance.mesh1_id and Distance.mesh2_id==distance.mesh2_id).delete()
+    session.commit()
 
 if __name__ =='__main__':
     main()

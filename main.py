@@ -48,7 +48,7 @@ def add_mesh(filepath, m, m2D):
 
 def update_mesh(filepath, m):
     m2D = Mesh2D.Mesh2D(
-        filepath[: filepath.rfind('/')] + filepath[filepath.rfind('/'): filepath.rfind('.')] + "_silhouette.png")
+        'dataset/'+filepath[: filepath.rfind('/')] + filepath[filepath.rfind('/'): filepath.rfind('.')] + "_silhouette.png")
 
     q = db_c.session.query(db_c.Mesh).filter(db_c.Mesh.filename == filepath).first()
     q.area2D = m2D.area
@@ -92,7 +92,8 @@ def matching_std(filepath):
     bbox_area_avg = db_c.session.query(func.avg(db_c.Mesh.bbox_area)).scalar()
     bbox_area_stddev = db_c.session.query(func.stddev(db_c.Mesh.bbox_area)).scalar()
 
-    m2D = db_c.session.query(db_c.Mesh).filter(db_c.Mesh.filename==filepath).first()
+    m2D = db_c.session.query(db_c.Mesh).filter(db_c.Mesh.filename==filepath[filepath.find('/')+1:]).first()
+
     meshes = db_c.session.query(db_c.Mesh).all()
 
     distances = []
@@ -118,23 +119,24 @@ def matching_std(filepath):
         distances.append(distance.euclidean(u, v))
         files.append(mesh.filename)
 
-    for i in range(30):
-        max_dist = distances.index(min(distances))
-        print ("File: {}, Distance: {}".format(files[max_dist], distances[max_dist]))
-
-        del distances[max_dist]
-        del files[max_dist]
+    return (distances, files)
+    # for i in range(30):
+    #     max_dist = distances.index(min(distances))
+    #     print ("File: {}, Distance: {}".format(files[max_dist], distances[max_dist]))
+    #
+    #     del distances[max_dist]
+    #     del files[max_dist]
 
 
 
 def main():
-    # files = getofffiles("dataset/")
-    files = ["dataset/Plier/201.off"]
+    files = getofffiles("dataset/")
+    # files = ["dataset/Ant/95.off"]
     #
     for n, filepath in enumerate(files, 1):
         start_time = time.time()
 
-        # print ("Number {} out of {}, file: {}".format(n, len(files), filepath))
+        print ("Number {} out of {}, file: {}".format(n, len(files), filepath))
         # with open(filepath, "r") as f:
         #     shape, vertexes, faces = meshTools.read_off(f)
         # m = Mesh.Mesh(filepath, vertexes, faces)
@@ -149,7 +151,18 @@ def main():
         # update_mesh(filepath, m)
 
         # meshTools.meshRenderer(processed_file, m.eigenvectors)
-        matching_std(filepath)
+        distances, meshes = matching_std(filepath)
+        for i in range(len(distances)):
+            id1 = db_c.session.query(db_c.Mesh.mesh_id).filter(db_c.Mesh.filename==filepath[filepath.find('/')+1:]).first()
+            id2 = db_c.session.query(db_c.Mesh.mesh_id).filter(db_c.Mesh.filename==meshes[i]).first()
+            if not id1 == id2:
+                db_c.session.add(db_c.Distance(
+                    mesh1_id=id1,
+                    mesh2_id=id2,
+                    value=distances[i]
+                ))
+        db_c.session.commit()
+
         print("Elapsed time: {}".format(time.time()-start_time))
 
 
