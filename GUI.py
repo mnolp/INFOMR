@@ -1,17 +1,17 @@
 import PySimpleGUI as sg
 import database_classes as db
-import trimesh
-import pyrender
-
-
-
-def render_mesh(filepath):
-    filepath = 'dataset/'+filepath
-    fuze_trimesh = trimesh.load(filepath)
-    mesh = pyrender.Mesh.from_trimesh(fuze_trimesh)
-    scene = pyrender.Scene()
-    scene.add(mesh)
-    pyrender.Viewer(scene, use_raymond_lighting=True)
+# import trimesh
+# import pyrender
+#
+#
+#
+# def render_mesh(filepath):
+#     filepath = 'dataset/'+filepath
+#     fuze_trimesh = trimesh.load(filepath)
+#     mesh = pyrender.Mesh.from_trimesh(fuze_trimesh)
+#     scene = pyrender.Scene()
+#     scene.add(mesh)
+#     pyrender.Viewer(scene, use_raymond_lighting=True)
 
 
 def main():
@@ -56,7 +56,7 @@ def main():
                 event, values = window2.Read()
                 if event == 'Open':
                     pass
-                    render_mesh(values['list'])
+                    # render_mesh(values['list'])
                 elif event in (None, 'Cancel'):
                     window2.close()
                     break
