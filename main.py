@@ -2,7 +2,7 @@ import meshTools
 import Mesh
 import os
 import Mesh2D
-import database_classes as db_c
+import database_classes as db
 from sqlalchemy import func
 import time
 from scipy.spatial import distance
@@ -29,10 +29,10 @@ def getpngfiles(path):
 
 
 def add_mesh(filepath, m, m2D):
-    db_c.session.add(db_c.Mesh(
+    db.session.add(db.Mesh(
         filename=filepath,
-        meshtype_id=db_c.session.query(db_c.Meshtype.meshtype_id).filter(
-            db_c.Meshtype.type == filepath[
+        meshtype_id=db.session.query(db.Meshtype.meshtype_id).filter(
+            db.Meshtype.type == filepath[
                                   filepath[:filepath.rfind('/')].rfind('/') + 1: filepath.rfind('/')]).first()[
             0],
         area2D=m2D.area,
@@ -44,13 +44,13 @@ def add_mesh(filepath, m, m2D):
         skeletonToPerimeterRatio2D=m2D.skeleton_length / m2D.perimeter,
         bbox_area=abs(m2D.bounding_box[0]*m2D.bounding_box[1])
     ))
-    db_c.session.commit()
+    db.session.commit()
 
 def update_mesh(filepath, m):
     m2D = Mesh2D.Mesh2D(
         'dataset/'+filepath[: filepath.rfind('/')] + filepath[filepath.rfind('/'): filepath.rfind('.')] + "_silhouette.png")
 
-    q = db_c.session.query(db_c.Mesh).filter(db_c.Mesh.filename == filepath).first()
+    q = db.session.query(db.Mesh).filter(db.Mesh.filename == filepath).first()
     q.area2D = m2D.area
     q.compactness2D = m2D.compactness
     q.rectangularity2D = m2D.rectangularity
@@ -60,7 +60,7 @@ def update_mesh(filepath, m):
     q.skeletonToPerimeterRatio2D = m2D.skeleton_length / m2D.perimeter
     q.bbox_area = float(m2D.bounding_box[0] * m2D.bounding_box[1])
 
-    db_c.session.commit()
+    db.session.commit()
 
 
 
@@ -68,33 +68,33 @@ def update_mesh(filepath, m):
 
 def matching_std(filepath):
     # area
-    area_avg = db_c.session.query(func.avg(db_c.Mesh.area2D)).scalar()
-    area_stddev = db_c.session.query(func.stddev(db_c.Mesh.area2D)).scalar()
+    area_avg = db.session.query(func.avg(db.Mesh.area2D)).scalar()
+    area_stddev = db.session.query(func.stddev(db.Mesh.area2D)).scalar()
     # perimeter
-    perimeter_avg = db_c.session.query(func.avg(db_c.Mesh.perimeter2D)).scalar()
-    perimeter_stddev = db_c.session.query(func.stddev(db_c.Mesh.perimeter2D)).scalar()
+    perimeter_avg = db.session.query(func.avg(db.Mesh.perimeter2D)).scalar()
+    perimeter_stddev = db.session.query(func.stddev(db.Mesh.perimeter2D)).scalar()
     # rectangularity
-    rectangularity_avg = db_c.session.query(func.avg(db_c.Mesh.rectangularity2D)).scalar()
-    rectangularity_stddev = db_c.session.query(func.stddev(db_c.Mesh.rectangularity2D)).scalar()
+    rectangularity_avg = db.session.query(func.avg(db.Mesh.rectangularity2D)).scalar()
+    rectangularity_stddev = db.session.query(func.stddev(db.Mesh.rectangularity2D)).scalar()
     # compactness
-    compactness_avg = db_c.session.query(func.avg(db_c.Mesh.compactness2D)).scalar()
-    compactness_stddev = db_c.session.query(func.stddev(db_c.Mesh.compactness2D)).scalar()
+    compactness_avg = db.session.query(func.avg(db.Mesh.compactness2D)).scalar()
+    compactness_stddev = db.session.query(func.stddev(db.Mesh.compactness2D)).scalar()
     # diameter
-    diameter_avg = db_c.session.query(func.avg(db_c.Mesh.diameter2D)).scalar()
-    diameter_stddev = db_c.session.query(func.stddev(db_c.Mesh.diameter2D)).scalar()
+    diameter_avg = db.session.query(func.avg(db.Mesh.diameter2D)).scalar()
+    diameter_stddev = db.session.query(func.stddev(db.Mesh.diameter2D)).scalar()
     # eccentricity
-    eccentricity_avg = db_c.session.query(func.avg(db_c.Mesh.eccentricity2D)).scalar()
-    eccentricity_stddev = db_c.session.query(func.stddev(db_c.Mesh.eccentricity2D)).scalar()
+    eccentricity_avg = db.session.query(func.avg(db.Mesh.eccentricity2D)).scalar()
+    eccentricity_stddev = db.session.query(func.stddev(db.Mesh.eccentricity2D)).scalar()
     # skeletonToPerimeterRatio
-    skeletonToPerimeterRatio_avg = db_c.session.query(func.avg(db_c.Mesh.skeletonToPerimeterRatio2D)).scalar()
-    skeletonToPerimeterRatio_stddev = db_c.session.query(func.stddev(db_c.Mesh.skeletonToPerimeterRatio2D)).scalar()
+    skeletonToPerimeterRatio_avg = db.session.query(func.avg(db.Mesh.skeletonToPerimeterRatio2D)).scalar()
+    skeletonToPerimeterRatio_stddev = db.session.query(func.stddev(db.Mesh.skeletonToPerimeterRatio2D)).scalar()
     # bbox_area
-    bbox_area_avg = db_c.session.query(func.avg(db_c.Mesh.bbox_area)).scalar()
-    bbox_area_stddev = db_c.session.query(func.stddev(db_c.Mesh.bbox_area)).scalar()
+    bbox_area_avg = db.session.query(func.avg(db.Mesh.bbox_area)).scalar()
+    bbox_area_stddev = db.session.query(func.stddev(db.Mesh.bbox_area)).scalar()
 
-    m2D = db_c.session.query(db_c.Mesh).filter(db_c.Mesh.filename==filepath[filepath.find('/')+1:]).first()
+    m2D = db.session.query(db.Mesh).filter(db.Mesh.filename==filepath[filepath.find('/')+1:]).first()
 
-    meshes = db_c.session.query(db_c.Mesh).all()
+    meshes = db.session.query(db.Mesh).all()
 
     distances = []
     files = []
@@ -129,7 +129,7 @@ def matching_std(filepath):
 
 
 
-def main():
+def old_main():
     files = getofffiles("dataset/")
     # files = ["dataset/Ant/95.off"]
     #
@@ -153,15 +153,15 @@ def main():
         # meshTools.meshRenderer(processed_file, m.eigenvectors)
         distances, meshes = matching_std(filepath)
         for i in range(len(distances)):
-            id1 = db_c.session.query(db_c.Mesh.mesh_id).filter(db_c.Mesh.filename==filepath[filepath.find('/')+1:]).first()
-            id2 = db_c.session.query(db_c.Mesh.mesh_id).filter(db_c.Mesh.filename==meshes[i]).first()
+            id1 = db.session.query(db.Mesh.mesh_id).filter(db.Mesh.filename==filepath[filepath.find('/')+1:]).first()
+            id2 = db.session.query(db.Mesh.mesh_id).filter(db.Mesh.filename==meshes[i]).first()
             if not id1 == id2:
-                db_c.session.add(db_c.Distance(
+                db.session.add(db.Distance(
                     mesh1_id=id1,
                     mesh2_id=id2,
                     value=distances[i]
                 ))
-        db_c.session.commit()
+        db.session.commit()
 
         print("Elapsed time: {}".format(time.time()-start_time))
 
@@ -172,7 +172,43 @@ def main():
     # print(m2D2.area)
 
 
+from Annoy import load_index
+def main():
+    t = load_index()
+    files = getofffiles('dataset')
 
+    classes = db.session.query(db.Meshtype.type).filter(db.Meshtype.type!='Armadillo').all()
+    true_positives = {c.type: 0 for c in classes}
+    true_negatives = {c.type: 0 for c in classes}
+    false_positives = {c.type: 0 for c in classes}
+    false_negatives = {c.type: 0 for c in classes}
 
+    for filename in files:
+        if filename.split('/')[1] != 'Armadillo':
+            mesh = db.session.query(db.Mesh).filter(db.Mesh.filename == filename[filename.index('/')+1: ]).first()
+            mesh_class = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==mesh.meshtype_id).first()
+
+            similar_meshes_id = t.get_nns_by_item(mesh.mesh_id, 20)
+
+            similar_meshes = [db.session.query(db.Mesh).filter(db.Mesh.mesh_id==id).first() for id in similar_meshes_id]
+            true_pos = 0
+            for sm in similar_meshes:
+                mc = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==sm.meshtype_id).first()
+                true_pos += 1 if mesh_class==mc else 0
+
+            true_positives[mesh_class.type] += true_pos
+            false_positives[mesh_class.type] += 20-true_pos
+            false_negatives[mesh_class.type] += 20-true_pos
+            true_negatives[mesh_class.type] += len(files)-false_negatives[mesh_class.type]
+
+    precision = {c.type: 0 for c in classes}
+    recall = {c.type: 0 for c in classes}
+
+    for key in precision:
+        precision[key] = true_positives[key]/(true_positives[key]+false_positives[key])
+        recall[key] = true_positives[key]/(true_positives[key]+false_negatives[key])
+        print("Class: {}, Precision: {}, Recall: {}".format(key, precision[key], recall[key]))
+
+        
 if __name__ == "__main__":
     main()

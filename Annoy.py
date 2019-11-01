@@ -31,6 +31,7 @@ def create_index():
 
 
 
+    armadillo_id = db.session.query(db.Meshtype).filter(db.Meshtype.type=='Armadillo').first()
     meshes = db.session.query(db.Mesh)\
                        .add_columns(db.Mesh.mesh_id,
                                     db.Mesh.area2D,
@@ -41,11 +42,12 @@ def create_index():
                                     db.Mesh.rectangularity2D,
                                     db.Mesh.skeletonToPerimeterRatio2D,
                                     db.Mesh.bbox_area)\
+                       .filter(db.Mesh.meshtype_id!=armadillo_id.meshtype_id)\
                        .all()
 
 
     t = annoy.AnnoyIndex(7, 'euclidean')
-    for i, mesh in enumerate(meshes,1):
+    for i, mesh in enumerate(meshes, 1):
         v = [(mesh.area2D - area_avg) / area_stddev,
              (mesh.perimeter2D - perimeter_avg) / perimeter_stddev,
              (mesh.rectangularity2D - rectangularity_avg) / rectangularity_stddev,
@@ -55,7 +57,7 @@ def create_index():
              (mesh.compactness2D - compactness_avg) / compactness_stddev]
         t.add_item(mesh.mesh_id, v)
 
-    t.build(30)
+    t.build(100)
     t.save('infomr.ann')
     return t
 
@@ -66,7 +68,7 @@ def load_index():
 
 def main():
 
-    mesh_filename = 'Glasses/44.off'
+    mesh_filename = 'Cup/22.off'
     mesh_index = db.session.query(db.Mesh.mesh_id).filter(db.Mesh.filename == mesh_filename).first()
     t = create_index()
     nns = t.get_nns_by_item(mesh_index.mesh_id, 20)

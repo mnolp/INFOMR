@@ -1,5 +1,6 @@
 import PySimpleGUI as sg
 import database_classes as db
+import Annoy as ann
 # import trimesh
 # import pyrender
 #
@@ -31,20 +32,12 @@ def main():
     while True:
         event, values = window.Read()
         if event == 'Open':
-            #Query
-            id1 = db.session.query(db.Distance)\
-                              .join(db.Distance.mesh1)\
-                              .filter(db.Mesh.filename==values['_OUTPUT_'])\
-                              .first()
-            test2 = db.session.query(db.Distance)\
-                              .filter(db.Distance.mesh1_id==id1.mesh1_id)\
-                              .join(db.Distance.mesh2)\
-                              .add_column(db.Mesh.filename)\
-                              .add_column(db.Distance.value)\
-                              .order_by(db.Distance.value)\
-                              .all()
+            # Query
+            selected_id = db.session.query(db.Mesh.mesh_id).filter(db.Mesh.filename==values['_OUTPUT_']).first()
+            t = ann.load_index()
+            knn = t.get_nns_by_item(selected_id.mesh_id, 20)
+            test2 = [db.session.query(db.Mesh.filename).filter(db.Mesh.mesh_id==i).first() for i in knn]
 
-            test2 = [test2[i].filename for i in range(20)]
             while True:
                 layout2 = [
                     [sg.Text('List of similar shapes', size=(15, 10)),
@@ -57,6 +50,7 @@ def main():
                 if event == 'Open':
                     pass
                     # render_mesh(values['list'])
+                    window2.close()
                 elif event in (None, 'Cancel'):
                     window2.close()
                     break
