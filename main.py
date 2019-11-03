@@ -119,18 +119,18 @@ def matching_std(filepath):
         distances.append(distance.euclidean(u, v))
         files.append(mesh.filename)
 
+    for i in range(20):
+        max_dist = distances.index(min(distances))
+        print ("File: {}, Distance: {}".format(files[max_dist], distances[max_dist]))
+
+        del distances[max_dist]
+        del files[max_dist]
     return (distances, files)
-    # for i in range(30):
-    #     max_dist = distances.index(min(distances))
-    #     print ("File: {}, Distance: {}".format(files[max_dist], distances[max_dist]))
-    #
-    #     del distances[max_dist]
-    #     del files[max_dist]
 
 
 
 def old_main():
-    files = getofffiles("dataset/")
+    files = getofffiles("Armadillo/")
     # files = ["dataset/Ant/95.off"]
     #
     for n, filepath in enumerate(files, 1):
@@ -173,42 +173,102 @@ def old_main():
 
 
 from Annoy import load_index
-def main():
-    t = load_index()
+def evaluate_out_of_20():
+    t = load_index('no_arm.ann')
     files = getofffiles('dataset')
 
-    classes = db.session.query(db.Meshtype.type).filter(db.Meshtype.type!='Armadillo').all()
+    classes = db.session.query(db.Meshtype.type).filter(~db.Meshtype.type.in_(['Armadillo',
+                                                        'Bust',
+                                                        'Vase',
+                                                        'Mech',
+                                                        'Bearing'])).all()
     true_positives = {c.type: 0 for c in classes}
     true_negatives = {c.type: 0 for c in classes}
     false_positives = {c.type: 0 for c in classes}
     false_negatives = {c.type: 0 for c in classes}
 
-    for filename in files:
-        if filename.split('/')[1] != 'Armadillo':
-            mesh = db.session.query(db.Mesh).filter(db.Mesh.filename == filename[filename.index('/')+1: ]).first()
-            mesh_class = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==mesh.meshtype_id).first()
+    for i, filename in enumerate(files):
+        mesh = db.session.query(db.Mesh).filter(db.Mesh.filename == filename[filename.index('/')+1: ]).first()
+        mesh_class = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==mesh.meshtype_id).first()
 
-            similar_meshes_id = t.get_nns_by_item(mesh.mesh_id, 20)
+        similar_meshes_id = t.get_nns_by_item(mesh.mesh_id, 20)
+        # similar_meshes_id = [x if x < 340 else x+20 for x in similar_meshes_id]
+        # similar_meshes_id = db.session.query(db.Distance).filter(db.Distance.mesh1_id==mesh.mesh_id).order_by(db.Distance.value).all()
 
-            similar_meshes = [db.session.query(db.Mesh).filter(db.Mesh.mesh_id==id).first() for id in similar_meshes_id]
-            true_pos = 0
-            for sm in similar_meshes:
-                mc = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==sm.meshtype_id).first()
-                true_pos += 1 if mesh_class==mc else 0
+        # similar_meshes = [db.session.query(db.Mesh).filter(db.Mesh.mesh_id==x.mesh2_id).first() for x in similar_meshes_id]
+        # similar_meshes = similar_meshes[:20]
 
-            true_positives[mesh_class.type] += true_pos
-            false_positives[mesh_class.type] += 20-true_pos
-            false_negatives[mesh_class.type] += 20-true_pos
-            true_negatives[mesh_class.type] += len(files)-false_negatives[mesh_class.type]
+        similar_meshes = [db.session.query(db.Mesh).filter(db.Mesh.mesh_id==id).first() for id in similar_meshes_id]
+        true_pos = 0
+        for sm in similar_meshes:
+            mc = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==sm.meshtype_id).first()
+            true_pos += 1 if mesh_class==mc else 0
+
+        true_positives[mesh_class.type] += true_pos
+        false_positives[mesh_class.type] += 20-true_pos
+        false_negatives[mesh_class.type] += 20-true_pos
+        true_negatives[mesh_class.type] += len(files)-false_negatives[mesh_class.type]
 
     precision = {c.type: 0 for c in classes}
     recall = {c.type: 0 for c in classes}
 
     for key in precision:
-        precision[key] = true_positives[key]/(true_positives[key]+false_positives[key])
-        recall[key] = true_positives[key]/(true_positives[key]+false_negatives[key])
-        print("Class: {}, Precision: {}, Recall: {}".format(key, precision[key], recall[key]))
+        try:
+            precision[key] = true_positives[key]/(true_positives[key]+false_positives[key])
+            recall[key] = true_positives[key]/(true_positives[key]+false_negatives[key])
+            print("Class: {}, Precision: {}, Recall: {}".format(key, precision[key], recall[key]))
+        except(ZeroDivisionError):
+            print("Error on class: {}".format(key))
 
-        
+def evaluate_get_all():
+    t = load_index('no_arm.ann')
+    files = getofffiles('dataset')
+
+    classes = db.session.query(db.Meshtype.type).filter(~db.Meshtype.type.in_(['Armadillo',
+                                                        'Bust',
+                                                        'Vase',
+                                                        'Mech',
+                                                        'Bearing'])).all()
+    true_positives = {c.type: 0 for c in classes}
+    true_negatives = {c.type: 0 for c in classes}
+    false_positives = {c.type: 0 for c in classes}
+    false_negatives = {c.type: 0 for c in classes}
+
+    for i, filename in enumerate(files):
+        mesh = db.session.query(db.Mesh).filter(db.Mesh.filename == filename[filename.index('/')+1: ]).first()
+        mesh_class = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==mesh.meshtype_id).first()
+
+        similar_meshes_id = t.get_nns_by_item(mesh.mesh_id, 280)
+        # similar_meshes_id = [x if x < 340 else x+20 for x in similar_meshes_id]
+        # similar_meshes_id = db.session.query(db.Distance).filter(db.Distance.mesh1_id==mesh.mesh_id).order_by(db.Distance.value).all()
+
+        # similar_meshes = [db.session.query(db.Mesh).filter(db.Mesh.mesh_id==x.mesh2_id).first() for x in similar_meshes_id]
+        # similar_meshes = similar_meshes[:20]
+
+        similar_meshes = [db.session.query(db.Mesh).filter(db.Mesh.mesh_id==id).first() for id in similar_meshes_id]
+        true_pos = 0
+        for num, sm in enumerate(similar_meshes):
+            mc = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==sm.meshtype_id).first()
+            true_pos += 1 if mesh_class==mc else 0
+            if true_pos==20: break
+
+        true_positives[mesh_class.type] += true_pos
+        false_positives[mesh_class.type] += num-true_pos
+        # false_negatives[mesh_class.type] += 20-true_pos
+        true_negatives[mesh_class.type] += len(files)-num
+
+    precision = {c.type: 0 for c in classes}
+    recall = {c.type: 0 for c in classes}
+
+    for key in precision:
+        try:
+            precision[key] = true_positives[key]/(true_positives[key]+false_positives[key])
+            recall[key] = true_positives[key]/(true_positives[key]+false_negatives[key])
+            print("Class: {}, Precision: {}, Recall: {}".format(key, precision[key], recall[key]))
+        except(ZeroDivisionError):
+            print("Error on class: {}".format(key))
+
+def main():
+    evaluate_get_all()
 if __name__ == "__main__":
     main()
