@@ -6,7 +6,7 @@ import database_classes as db
 from sqlalchemy import func
 import time
 from scipy.spatial import distance
-from scipy.stats import wasserstein_distance
+
 
 
 def getofffiles(path):
@@ -172,37 +172,31 @@ def old_main():
     # print(m2D2.area)
 
 
-from Annoy import load_index
+from Annoy import load_index, create_index
 def evaluate_out_of_20():
-    t = load_index('no_arm.ann')
+    banned_classes_ids = [3, 6, 11, 18, 20]
+    t = create_index(banned_classes_ids)
+    banned_classes = db.session.query(db.Meshtype.type).filter(db.Meshtype.meshtype_id.in_(banned_classes_ids)).all()
+    banned_classes = [x.type for x in banned_classes]
     files = getofffiles('dataset')
-
-    classes = db.session.query(db.Meshtype.type).filter(~db.Meshtype.type.in_(['Armadillo',
-                                                        'Bust',
-                                                        'Vase',
-                                                        'Mech',
-                                                        'Bearing'])).all()
+    classes = db.session.query(db.Meshtype.type).filter(~db.Meshtype.meshtype_id.in_(banned_classes_ids)).all()
     true_positives = {c.type: 0 for c in classes}
     true_negatives = {c.type: 0 for c in classes}
     false_positives = {c.type: 0 for c in classes}
     false_negatives = {c.type: 0 for c in classes}
 
     for i, filename in enumerate(files):
-        mesh = db.session.query(db.Mesh).filter(db.Mesh.filename == filename[filename.index('/')+1: ]).first()
-        mesh_class = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==mesh.meshtype_id).first()
+        if filename.split('/')[1] not in banned_classes:
+            mesh = db.session.query(db.Mesh).filter(db.Mesh.filename == filename[filename.index('/')+1: ]).first()
+            mesh_class = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==mesh.meshtype_id).first()
 
-        similar_meshes_id = t.get_nns_by_item(mesh.mesh_id, 20)
-        # similar_meshes_id = [x if x < 340 else x+20 for x in similar_meshes_id]
-        # similar_meshes_id = db.session.query(db.Distance).filter(db.Distance.mesh1_id==mesh.mesh_id).order_by(db.Distance.value).all()
+            similar_meshes_id, similar_meshes_distances = t.get_nns_by_item(mesh.mesh_id, 20, include_distances=True)
 
-        # similar_meshes = [db.session.query(db.Mesh).filter(db.Mesh.mesh_id==x.mesh2_id).first() for x in similar_meshes_id]
-        # similar_meshes = similar_meshes[:20]
-
-        similar_meshes = [db.session.query(db.Mesh).filter(db.Mesh.mesh_id==id).first() for id in similar_meshes_id]
-        true_pos = 0
-        for sm in similar_meshes:
-            mc = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==sm.meshtype_id).first()
-            true_pos += 1 if mesh_class==mc else 0
+            similar_meshes = [db.session.query(db.Mesh).filter(db.Mesh.mesh_id==id).first() for id in similar_meshes_id]
+            true_pos = 0
+            for sm in similar_meshes:
+                mc = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==sm.meshtype_id).first()
+                true_pos += 1 if mesh_class==mc else 0
 
         true_positives[mesh_class.type] += true_pos
         false_positives[mesh_class.type] += 20-true_pos
@@ -212,45 +206,45 @@ def evaluate_out_of_20():
     precision = {c.type: 0 for c in classes}
     recall = {c.type: 0 for c in classes}
 
-    for key in precision:
-        try:
-            precision[key] = true_positives[key]/(true_positives[key]+false_positives[key])
-            recall[key] = true_positives[key]/(true_positives[key]+false_negatives[key])
-            print("Class: {}, Precision: {}, Recall: {}".format(key, precision[key], recall[key]))
-        except(ZeroDivisionError):
-            print("Error on class: {}".format(key))
+    with open("prec_rec.csv", "w") as outf:
+        outf.write("Class;Precision;Recall;\n")
+        for key in precision:
+            try:
+                precision[key] = true_positives[key]/(true_positives[key]+false_positives[key])
+                recall[key] = true_positives[key]/(true_positives[key]+false_negatives[key])
+                outf.write("{};{};{};\n".format(key, precision[key], recall[key]).format(key, precision[key], recall[key]))
+                print("Class: {}; Precision: {}; Recall: {}".format(key, precision[key], recall[key]))
+            except(ZeroDivisionError):
+                print("Error on class: {}".format(key))
 
 def evaluate_get_all():
-    t = load_index('no_arm.ann')
+    banned_classes_ids = []
+    t = create_index(banned_classes_ids)
+    banned_classes = db.session.query(db.Meshtype.type).filter(db.Meshtype.meshtype_id.in_(banned_classes_ids)).all()
+    banned_classes = [x.type for x in banned_classes]
     files = getofffiles('dataset')
 
-    classes = db.session.query(db.Meshtype.type).filter(~db.Meshtype.type.in_(['Armadillo',
-                                                        'Bust',
-                                                        'Vase',
-                                                        'Mech',
-                                                        'Bearing'])).all()
+
+    classes = db.session.query(db.Meshtype.type).filter(~db.Meshtype.type.in_(banned_classes)).all()
     true_positives = {c.type: 0 for c in classes}
     true_negatives = {c.type: 0 for c in classes}
     false_positives = {c.type: 0 for c in classes}
     false_negatives = {c.type: 0 for c in classes}
 
     for i, filename in enumerate(files):
-        mesh = db.session.query(db.Mesh).filter(db.Mesh.filename == filename[filename.index('/')+1: ]).first()
-        mesh_class = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==mesh.meshtype_id).first()
+        if filename.split('/')[1] not in banned_classes:
+            print(filename)
+            mesh = db.session.query(db.Mesh).filter(db.Mesh.filename == filename[filename.index('/')+1: ]).first()
+            mesh_class = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==mesh.meshtype_id).first()
 
-        similar_meshes_id = t.get_nns_by_item(mesh.mesh_id, 280)
-        # similar_meshes_id = [x if x < 340 else x+20 for x in similar_meshes_id]
-        # similar_meshes_id = db.session.query(db.Distance).filter(db.Distance.mesh1_id==mesh.mesh_id).order_by(db.Distance.value).all()
+            similar_meshes_id = t.get_nns_by_item(mesh.mesh_id, 280)
 
-        # similar_meshes = [db.session.query(db.Mesh).filter(db.Mesh.mesh_id==x.mesh2_id).first() for x in similar_meshes_id]
-        # similar_meshes = similar_meshes[:20]
-
-        similar_meshes = [db.session.query(db.Mesh).filter(db.Mesh.mesh_id==id).first() for id in similar_meshes_id]
-        true_pos = 0
-        for num, sm in enumerate(similar_meshes):
-            mc = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==sm.meshtype_id).first()
-            true_pos += 1 if mesh_class==mc else 0
-            if true_pos==20: break
+            similar_meshes = [db.session.query(db.Mesh).filter(db.Mesh.mesh_id==id).first() for id in similar_meshes_id]
+            true_pos = 0
+            for num, sm in enumerate(similar_meshes):
+                mc = db.session.query(db.Meshtype).filter(db.Meshtype.meshtype_id==sm.meshtype_id).first()
+                true_pos += 1 if mesh_class==mc else 0
+                if true_pos==20: break
 
         true_positives[mesh_class.type] += true_pos
         false_positives[mesh_class.type] += num-true_pos
@@ -260,15 +254,19 @@ def evaluate_get_all():
     precision = {c.type: 0 for c in classes}
     recall = {c.type: 0 for c in classes}
 
+    with open("prec_rec.csv", "w") as outf:
+        outf.write("Class,Precision,Recall,\n")
     for key in precision:
         try:
             precision[key] = true_positives[key]/(true_positives[key]+false_positives[key])
             recall[key] = true_positives[key]/(true_positives[key]+false_negatives[key])
+            outf.write("{},{},{},\n".format(key, precision[key], recall[key]).format(key, precision[key], recall[key]))
             print("Class: {}, Precision: {}, Recall: {}".format(key, precision[key], recall[key]))
         except(ZeroDivisionError):
             print("Error on class: {}".format(key))
 
 def main():
-    evaluate_get_all()
+    evaluate_out_of_20()
+
 if __name__ == "__main__":
     main()

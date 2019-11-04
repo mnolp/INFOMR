@@ -25,7 +25,7 @@ def main():
 
     window = sg.Window('Content-based Shape Retrieval System', layout).finalize()
     #query to get list of shapes
-    test=db.session.query(db.Mesh.filename).order_by(db.Mesh.filename).all()
+    test=db.session.query(db.Mesh.filename).filter(~db.Mesh.meshtype_id.in_([3, 6, 11, 18, 20])).order_by(db.Mesh.filename).all()
     window.FindElement('_OUTPUT_').Update(values=test)
 
     # event, values = window.Read()
@@ -34,7 +34,7 @@ def main():
         if event == 'Open':
             # Query
             selected_id = db.session.query(db.Mesh.mesh_id).filter(db.Mesh.filename==values['_OUTPUT_']).first()
-            t = ann.load_index()
+            t = ann.load_index('no_arm.ann')
             knn = t.get_nns_by_item(selected_id.mesh_id, 20)
             test2 = [db.session.query(db.Mesh.filename).filter(db.Mesh.mesh_id==i).first() for i in knn]
 
