@@ -7,8 +7,10 @@ from scipy.spatial import distance
 from scipy import stats
 
 
-
-db = create_engine("postgres://Tiziano:Tnatali93@localhost/infomr")
+'''
+change this line with information from your database
+'''
+db = create_engine("postgres://User:Password@localhost/database")
 base = declarative_base()
 
 # create a configured "Session" class
