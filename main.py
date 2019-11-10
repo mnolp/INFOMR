@@ -8,7 +8,9 @@ import time
 from scipy.spatial import distance
 
 
-
+'''
+Function to find all off files in path and return them as a list
+'''
 def getofffiles(path):
     files = []
     for r, d, f in os.walk(path):
@@ -18,6 +20,9 @@ def getofffiles(path):
 
     return files
 
+'''
+Function to find all png files in path and return them as a list
+'''
 def getpngfiles(path):
     files = []
     for r, d, f in os.walk(path):
@@ -27,7 +32,9 @@ def getpngfiles(path):
 
     return files
 
-
+'''
+Function to add a mesh (m, m2D) with filepath to the database
+'''
 def add_mesh(filepath, m, m2D):
     db.session.add(db.Mesh(
         filename=filepath,
@@ -46,6 +53,9 @@ def add_mesh(filepath, m, m2D):
     ))
     db.session.commit()
 
+'''
+Function to update an already existing mesh with new values
+'''
 def update_mesh(filepath, m):
     m2D = Mesh2D.Mesh2D(
         'dataset/'+filepath[: filepath.rfind('/')] + filepath[filepath.rfind('/'): filepath.rfind('.')] + "_silhouette.png")
@@ -62,10 +72,9 @@ def update_mesh(filepath, m):
 
     db.session.commit()
 
-
-
-
-
+'''
+Function that return the first 20 similar meshes querying the database
+'''
 def matching_std(filepath):
     # area
     area_avg = db.session.query(func.avg(db.Mesh.area2D)).scalar()
@@ -128,50 +137,32 @@ def matching_std(filepath):
     return (distances, files)
 
 
-
-def old_main():
-    files = getofffiles("Armadillo/")
-    # files = ["dataset/Ant/95.off"]
-    #
+'''
+Function that noramlise a mesh and save its silhouette
+'''
+def extract_silhouette(files):
     for n, filepath in enumerate(files, 1):
         start_time = time.time()
 
         print ("Number {} out of {}, file: {}".format(n, len(files), filepath))
-        # with open(filepath, "r") as f:
-        #     shape, vertexes, faces = meshTools.read_off(f)
-        # m = Mesh.Mesh(filepath, vertexes, faces)
-        # m.setMeshToCenter()
-        # m.eigen()
-        # m.changingBase()
-        # m.setBoundingBox()
-        # m.normalizeMesh()
-        # m.flipTest()
-        # processed_file = m.toFile()
-        # filepath2D = m.toimage()
-        # update_mesh(filepath, m)
-
-        # meshTools.meshRenderer(processed_file, m.eigenvectors)
-        distances, meshes = matching_std(filepath)
-        for i in range(len(distances)):
-            id1 = db.session.query(db.Mesh.mesh_id).filter(db.Mesh.filename==filepath[filepath.find('/')+1:]).first()
-            id2 = db.session.query(db.Mesh.mesh_id).filter(db.Mesh.filename==meshes[i]).first()
-            if not id1 == id2:
-                db.session.add(db.Distance(
-                    mesh1_id=id1,
-                    mesh2_id=id2,
-                    value=distances[i]
-                ))
-        db.session.commit()
-
+        with open(filepath, "r") as f:
+            shape, vertexes, faces = meshTools.read_off(f)
+        m = Mesh.Mesh(filepath, vertexes, faces)
+        m.setMeshToCenter()
+        m.eigen()
+        m.changingBase()
+        m.setBoundingBox()
+        m.normalizeMesh()
+        m.flipTest()
+        processed_file = m.toFile()
+        filepath2D = m.toimage()
+        
         print("Elapsed time: {}".format(time.time()-start_time))
 
 
-    # m2D2 = Mesh2D.Mesh2D("dataset/Airplane/80_silhouette.png")
-    #
-    # print(m2D1.area)
-    # print(m2D2.area)
-
-
+'''
+Function that evaluates the system set with ANN index, store the result in csv file
+'''
 from Annoy import load_index, create_index
 def evaluate_out_of_20():
     banned_classes_ids = [3, 6, 11, 18, 20]
@@ -217,6 +208,9 @@ def evaluate_out_of_20():
             except(ZeroDivisionError):
                 print("Error on class: {}".format(key))
 
+'''
+Function that evaluates the system set to work with a recall equals to 1, sotres the results in a csv file
+'''
 def evaluate_get_all():
     banned_classes_ids = []
     t = create_index(banned_classes_ids)
