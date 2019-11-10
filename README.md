@@ -6,4 +6,6 @@ Info:
 - The Mesh.py file contains the Mesh class object which is used to normalise and create silhouettes from an off file
 - The Mesh2D.py file contains Mesh2D class object which computes the feature vector for the given mesh
 - The Annoy.py file contains function to create and update the ANN index
-- The GUI.py file contains the gui. Running this script let the user access the system.
+- The GUI.py file contains the gui. Running this script let the user access the system. If no ANN is present in project directory, run Annoy.py
+- The database_classes.py contains the ORM mapping to the database
+- The database is stored in infomr_final.pgsql file.
